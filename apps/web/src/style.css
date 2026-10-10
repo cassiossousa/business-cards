@@ -49,6 +49,24 @@
   --shadow-card:
     0 1px 2px rgba(20, 20, 30, 0.06), 0 8px 24px rgba(20, 20, 30, 0.06);
   --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
+  /* Type scale: one token per size in use, frozen like the raw palette.
+     -xs is fine print, -sm labels and controls, -base body text, and
+     -md…-xl are the sizes h3…h1 map to. */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  /* Heading roles: the full font shorthand per heading level. --font-h1
+     is the compact header title while --font-h2 is the larger page
+     heading — size follows visual hierarchy, not tag order. Line height
+     is baked in because the font shorthand resets it, and letter
+     spacing cannot ride in the shorthand, so it is its own token. */
+  --font-h1: 650 var(--text-lg) / 1.5 var(--font-sans);
+  --font-h2: 650 var(--text-xl) / 1.5 var(--font-sans);
+  --font-h3: 600 var(--text-md) / 1.5 var(--font-sans);
+  --tracking-tight: -0.01em;
 
   color-scheme: light;
 }
@@ -83,7 +101,7 @@
 body {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 1rem;
+  font-size: var(--text-base);
   line-height: 1.5;
   color: var(--text-primary);
   background: var(--page-bg);

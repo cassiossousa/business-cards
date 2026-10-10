@@ -36,7 +36,7 @@ function onChange(event: Event) {
      and a --space-2 gap, so the label never runs into the chevron. */
   padding: 0 calc(var(--space-3) + var(--space-2) + 1rem) 0 var(--space-3);
   font: inherit;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
   color: var(--text-primary);
   background-color: var(--surface-subtle);
   /* The native chevron is painted inside the right padding, hiding it.

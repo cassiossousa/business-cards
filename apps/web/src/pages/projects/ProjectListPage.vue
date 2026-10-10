@@ -231,9 +231,8 @@ onMounted(() => {
 <style scoped>
 .page-heading {
   margin: 0 0 var(--space-6);
-  font-size: 1.5rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  font: var(--font-h2);
+  letter-spacing: var(--tracking-tight);
 }
 
 .card {
@@ -250,8 +249,7 @@ onMounted(() => {
 
 .card-title {
   margin: 0 0 var(--space-4);
-  font-size: 1.0625rem;
-  font-weight: 600;
+  font: var(--font-h3);
 }
 
 .create-form {
@@ -271,14 +269,14 @@ onMounted(() => {
 }
 
 .create-form label {
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .form-feedback {
   margin: var(--space-3) 0 0;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
   min-height: 0;
 }
 
@@ -329,7 +327,7 @@ onMounted(() => {
 .project-created {
   display: block;
   color: var(--text-secondary);
-  font-size: 0.8125rem;
+  font-size: var(--text-xs);
 }
 
 .project-actions {

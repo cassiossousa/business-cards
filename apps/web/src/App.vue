@@ -75,15 +75,14 @@ function onThemeChange(value: string) {
 
 .app-title {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  font: var(--font-h1);
+  letter-spacing: var(--tracking-tight);
 }
 
 .app-subtitle {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
 }
 
 .theme-control {
@@ -95,7 +94,7 @@ function onThemeChange(value: string) {
 
 .theme-label {
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
 }
 
 .app-main {
