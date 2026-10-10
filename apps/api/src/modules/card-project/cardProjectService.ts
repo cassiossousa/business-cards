@@ -1,7 +1,7 @@
 import type {
   CardProject,
   CardProjectRepository,
-} from "./cardCardProjectRepository.js";
+} from "./cardProjectRepository.js";
 
 export class InvalidCardProjectNameError extends Error {
   constructor(message: string) {

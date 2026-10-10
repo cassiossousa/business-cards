@@ -8,7 +8,7 @@ export interface CardProject {
   createdAt: string;
 }
 
-export interface ProjectRepository {
+export interface CardProjectRepository {
   list(): CardProject[];
   create(name: string): CardProject;
   delete(id: string): boolean;
@@ -28,7 +28,7 @@ function toProject(row: ProjectRow): CardProject {
   };
 }
 
-export class SqliteProjectRepository implements ProjectRepository {
+export class SqliteProjectRepository implements CardProjectRepository {
   constructor(private readonly database: Database.Database) {}
 
   list(): CardProject[] {
