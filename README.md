@@ -13,6 +13,14 @@ follows your OS setting.
   version, and npm enforces the range from `engines` (`engine-strict` in
   `.npmrc`).
 
+## Editor setup
+
+The repository ships `.vscode/` settings that point VSCode at the workspace
+TypeScript and recommend the required extensions (Vue - Official, ESLint,
+Prettier). On first open, install the recommended extensions and accept the
+prompt to use the workspace TypeScript version — the Vue - Official
+extension needs it to resolve `.vue` imports in `.ts` files.
+
 ## Getting started
 
 ```bash
