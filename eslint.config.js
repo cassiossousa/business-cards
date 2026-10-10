@@ -63,6 +63,7 @@ export default tseslint.config(
       "vue/html-closing-bracket-newline": "off",
       "vue/first-attribute-linebreak": "off",
       "vue/html-indent": "off",
+      "vue/multiline-html-element-content-newline": "off",
     },
   },
   {

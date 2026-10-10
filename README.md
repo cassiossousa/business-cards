@@ -113,10 +113,13 @@ apps/
       db/database.ts              Connection + migration runner
       modules/card-project/       Routes, service (validation), repository (SQL)
     tests/                        Service, repository, migration, HTTP tests
-  web/    Vue 3 + TypeScript + Vite
+  web/    Vue 3 + TypeScript + Vite + Vue Router
     src/
       api/                        API client and response contract types
+      components/                 AppButton, AppInput, AppSelect, AppNavbar
       pages/projects/ProjectListPage  Projects UI (create, list, delete)
+      router/                     Routes: / redirects to /projects
+      theme/                      Light/dark/system theme (header control)
 ```
 
 Layering is UI / HTTP → service (use cases + validation) → repository (SQL).

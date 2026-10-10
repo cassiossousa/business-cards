@@ -1,8 +1,10 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createMemoryHistory } from "vue-router";
 
 import { listProjects } from "./api/projectsApi";
 import App from "./App.vue";
+import { createAppRouter } from "./router";
 import { getThemePreference, setThemePreference } from "./theme/theme";
 
 vi.mock("./api/projectsApi", async (importOriginal) => {
@@ -31,9 +33,15 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+function mountApp() {
+  const router = createAppRouter(createMemoryHistory());
+  const wrapper = mount(App, { global: { plugins: [router] } });
+  return { wrapper, router };
+}
+
 describe("App", () => {
-  it("renders the app header and hosts the projects page", async () => {
-    const wrapper = mount(App);
+  it("renders the navbar and hosts the projects page", async () => {
+    const { wrapper } = mountApp();
     await flushPromises();
 
     expect(wrapper.find("h1").text()).toBe("Business Cards");
@@ -41,9 +49,16 @@ describe("App", () => {
     expect(wrapper.text()).toContain("No projects yet.");
   });
 
+  it("redirects the index route to /projects", async () => {
+    const { router } = mountApp();
+    await flushPromises();
+
+    expect(router.currentRoute.value.path).toBe("/projects");
+  });
+
   it("offers light, dark, and system theme choices", async () => {
     getThemePreferenceMock.mockReturnValue("dark");
-    const wrapper = mount(App);
+    const { wrapper } = mountApp();
     await flushPromises();
 
     const select = wrapper.get("select");
@@ -57,7 +72,7 @@ describe("App", () => {
   });
 
   it("applies a theme change through setThemePreference", async () => {
-    const wrapper = mount(App);
+    const { wrapper } = mountApp();
     await flushPromises();
 
     await wrapper.get("select").setValue("dark");
@@ -66,5 +81,24 @@ describe("App", () => {
     expect((wrapper.get("select").element as HTMLSelectElement).value).toBe(
       "dark",
     );
+  });
+
+  it("navigates to /projects from the navbar link", async () => {
+    const { wrapper, router } = mountApp();
+    await flushPromises();
+
+    await wrapper.get('nav[aria-label="Main"] a').trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.path).toBe("/projects");
+    expect(wrapper.get("main").text()).toContain("No projects yet.");
+  });
+
+  it("marks the current page link with aria-current", async () => {
+    const { wrapper } = mountApp();
+    await flushPromises();
+
+    const link = wrapper.get('nav[aria-label="Main"] a');
+    expect(link.attributes("aria-current")).toBe("page");
   });
 });
