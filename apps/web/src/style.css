@@ -1,41 +1,60 @@
 :root {
-  --page-bg: #f4f4f6;
-  --surface: #ffffff;
-  --text: #1d1d22;
-  --text-muted: #5d5d68;
-  --border: #dcdce2;
-  --accent: #5b3df5;
-  --accent-hover: #4c30d8;
-  --accent-contrast: #ffffff;
-  --danger: #b3261e;
-  --danger-hover: #9a1f19;
-  --danger-contrast: #ffffff;
-  --focus-ring: #5b3df5;
+  /*
+   * Palette tokens use hue + strength. --white is the surface color and
+   * doubles as readable text on colored fills; dark mode flips its value
+   * so both roles keep working. Neutrals: 100 = page background, 200 =
+   * border, 500 = muted text, 900 = primary text. Hue colors use
+   * 500 = resting, 600 = hover.
+   */
+  --white: #ffffff;
+  --gray-100: #f4f4f6;
+  --gray-200: #dcdce2;
+  --gray-500: #5d5d68;
+  --gray-900: #1d1d22;
+  --violet-500: #5b3df5;
+  --violet-600: #4c30d8;
+  --red-500: #b3261e;
+  --red-600: #9a1f19;
+
   --radius-sm: 6px;
   --radius-md: 10px;
+  /* Spacing scale: --space-N is N × 4px. Margins, paddings, and gaps use
+     these tokens; raw values are reserved for component geometry such as
+     control heights. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-10: 40px;
+  --space-16: 64px;
   --shadow-card:
     0 1px 2px rgba(20, 20, 30, 0.06), 0 8px 24px rgba(20, 20, 30, 0.06);
   --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
 
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --page-bg: #141419;
-    --surface: #1e1e26;
-    --text: #ececf1;
-    --text-muted: #9d9daa;
-    --border: #34343f;
-    --accent: #8b74ff;
-    --accent-hover: #a08fff;
-    --accent-contrast: #141419;
-    --danger: #f2a49f;
-    --danger-hover: #f6bcb8;
-    --danger-contrast: #141419;
-    --focus-ring: #8b74ff;
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
-  }
+/*
+ * The only place dark token values are defined. index.html sets
+ * data-theme on <html> before first paint from localStorage / the OS
+ * preference, and src/theme/theme.ts keeps it in sync with the header
+ * control, so this attribute — not a media query — decides the theme.
+ */
+:root[data-theme="dark"] {
+  --white: #1e1e26;
+  --gray-100: #141419;
+  --gray-200: #34343f;
+  --gray-500: #9d9daa;
+  --gray-900: #ececf1;
+  --violet-500: #8b74ff;
+  --violet-600: #a08fff;
+  --red-500: #f2a49f;
+  --red-600: #f6bcb8;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+
+  color-scheme: dark;
 }
 
 * {
@@ -47,288 +66,7 @@ body {
   font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.5;
-  color: var(--text);
-  background: var(--page-bg);
+  color: var(--gray-900);
+  background: var(--gray-100);
   -webkit-font-smoothing: antialiased;
-}
-
-.container {
-  width: 100%;
-  max-width: 720px;
-  margin-inline: auto;
-  padding-inline: 24px;
-}
-
-.app-header {
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.app-header .container {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding-block: 20px;
-}
-
-.app-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
-
-.app-subtitle {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-.app-main {
-  padding-block: 40px 64px;
-}
-
-.page-heading {
-  margin: 0 0 24px;
-  font-size: 24px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 24px;
-  box-shadow: var(--shadow-card);
-}
-
-.card + .card {
-  margin-top: 24px;
-}
-
-.card-title {
-  margin: 0 0 16px;
-  font-size: 17px;
-  font-weight: 600;
-}
-
-.create-form {
-  display: flex;
-  gap: 12px;
-  /* The input is the field's last child, so bottom-alignment puts the
-     button beside the input rather than beside the label above it. */
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-
-.create-form .field {
-  flex: 1 1 240px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.create-form label {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.form-feedback {
-  margin: 12px 0 0;
-  font-size: 14px;
-  min-height: 0;
-}
-
-.form-feedback:empty {
-  display: none;
-}
-
-.form-feedback[data-tone="error"] {
-  color: var(--danger);
-}
-
-.form-feedback[data-tone="success"] {
-  color: var(--text-muted);
-}
-
-.input {
-  height: 40px;
-  padding: 0 12px;
-  font: inherit;
-  color: var(--text);
-  background: var(--page-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-
-.input:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 1px;
-}
-
-.input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn {
-  height: 40px;
-  padding: 0 16px;
-  font: inherit;
-  font-weight: 500;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  color: var(--accent-contrast);
-  background: var(--accent);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.btn-secondary {
-  color: var(--text);
-  background: transparent;
-  border-color: var(--border);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--page-bg);
-}
-
-.btn-danger {
-  color: var(--danger);
-  background: transparent;
-  border-color: var(--border);
-}
-
-.btn-danger:hover:not(:disabled) {
-  color: var(--danger-hover);
-  border-color: var(--danger);
-}
-
-.btn-danger-solid {
-  color: var(--danger-contrast);
-  background: var(--danger);
-}
-
-.btn-danger-solid:hover:not(:disabled) {
-  background: var(--danger-hover);
-}
-
-.project-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.project-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-}
-
-.project-list li:last-child {
-  border-bottom: none;
-  padding-bottom: 4px;
-}
-
-.project-list li:first-child {
-  padding-top: 4px;
-}
-
-.project-name {
-  font-weight: 550;
-  overflow-wrap: anywhere;
-}
-
-.project-created {
-  display: block;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.project-actions {
-  display: flex;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.state-panel {
-  padding: 40px 24px;
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.skeleton-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.skeleton-list li {
-  height: 44px;
-  border-radius: var(--radius-sm);
-  background: var(--page-bg);
-  animation: skeleton-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes skeleton-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .skeleton-list li {
-    animation: none;
-  }
-}
-
-@media (max-width: 560px) {
-  .container {
-    padding-inline: 16px;
-  }
-
-  .card {
-    padding: 16px;
-  }
-
-  .project-actions {
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .project-actions .btn {
-    flex: 1;
-  }
 }

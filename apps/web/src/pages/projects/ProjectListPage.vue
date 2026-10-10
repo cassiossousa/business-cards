@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 
-import type { CardProject } from "../api/types";
+import type { CardProject } from "../../api/types";
 import {
   ApiError,
   createProject,
   deleteProject,
   listProjects,
-} from "../api/projectsApi";
+} from "../../api/projectsApi";
+import AppButton from "../../components/AppButton.vue";
 
 type LoadState = "loading" | "error" | "ready";
 
@@ -150,9 +151,9 @@ onMounted(() => {
           autocomplete="off"
         />
       </div>
-      <button class="btn btn-primary" type="submit" :disabled="isSubmitting">
+      <AppButton variant="primary" type="submit" :disabled="isSubmitting">
         {{ isSubmitting ? "Creating…" : "Create project" }}
-      </button>
+      </AppButton>
     </form>
     <p
       v-if="formFeedback"
@@ -185,9 +186,9 @@ onMounted(() => {
 
     <div v-else-if="loadState === 'error'" class="state-panel">
       <p>Could not load your projects.</p>
-      <button class="btn btn-secondary" type="button" @click="loadProjects">
+      <AppButton variant="secondary" @click="loadProjects">
         Try again
-      </button>
+      </AppButton>
     </div>
 
     <p v-else-if="projects.length === 0" class="state-panel">
@@ -203,33 +204,213 @@ onMounted(() => {
           >
         </div>
         <div v-if="pendingDeleteId !== project.id" class="project-actions">
-          <button
-            class="btn btn-danger"
-            type="button"
-            @click="requestDelete(project)"
-          >
+          <AppButton variant="danger" @click="requestDelete(project)">
             Delete
-          </button>
+          </AppButton>
         </div>
         <div v-else class="project-actions">
-          <button
-            class="btn btn-danger-solid"
-            type="button"
+          <AppButton
+            variant="danger-solid"
             :disabled="deletingId === project.id"
             @click="confirmDelete"
           >
             {{ deletingId === project.id ? "Deleting…" : "Confirm delete" }}
-          </button>
-          <button
-            class="btn btn-secondary"
-            type="button"
+          </AppButton>
+          <AppButton
+            variant="secondary"
             :disabled="deletingId === project.id"
             @click="cancelDelete"
           >
             Cancel
-          </button>
+          </AppButton>
         </div>
       </li>
     </ul>
   </section>
 </template>
+
+<style scoped>
+.page-heading {
+  margin: 0 0 var(--space-6);
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-card);
+}
+
+.card + .card {
+  margin-top: var(--space-6);
+}
+
+.card-title {
+  margin: 0 0 var(--space-4);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.create-form {
+  display: flex;
+  gap: var(--space-3);
+  /* The input is the field's last child, so bottom-alignment puts the
+     button beside the input rather than beside the label above it. */
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.create-form .field {
+  flex: 1 1 240px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.create-form label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-900);
+}
+
+.form-feedback {
+  margin: var(--space-3) 0 0;
+  font-size: 14px;
+  min-height: 0;
+}
+
+.form-feedback:empty {
+  display: none;
+}
+
+.form-feedback[data-tone="error"] {
+  color: var(--red-500);
+}
+
+.form-feedback[data-tone="success"] {
+  color: var(--gray-500);
+}
+
+.input {
+  height: 40px;
+  padding: 0 var(--space-3);
+  font: inherit;
+  color: var(--gray-900);
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--violet-500);
+  outline-offset: 2px;
+}
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.project-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--gray-200);
+  flex-wrap: wrap;
+}
+
+.project-list li:last-child {
+  border-bottom: none;
+  padding-bottom: var(--space-1);
+}
+
+.project-list li:first-child {
+  padding-top: var(--space-1);
+}
+
+.project-name {
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.project-created {
+  display: block;
+  color: var(--gray-500);
+  font-size: 13px;
+}
+
+.project-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.state-panel {
+  padding: var(--space-10) var(--space-6);
+  text-align: center;
+  color: var(--gray-500);
+}
+
+.skeleton-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.skeleton-list li {
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: var(--gray-100);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-list li {
+    animation: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .card {
+    padding: var(--space-4);
+  }
+
+  .project-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  /* AppButton renders the button element, so reach past the child
+     component's scoped boundary to make its buttons fill the row. */
+  .project-actions :deep(button) {
+    flex: 1;
+  }
+}
+</style>

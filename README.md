@@ -106,7 +106,7 @@ apps/
   web/    Vue 3 + TypeScript + Vite
     src/
       api/                        API client and response contract types
-      components/ProjectListPage  Projects UI (create, list, delete)
+      pages/projects/ProjectListPage  Projects UI (create, list, delete)
 ```
 
 Layering is UI / HTTP → service (use cases + validation) → repository (SQL).

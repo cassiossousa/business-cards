@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import Database from "better-sqlite3";
+import type Database from "better-sqlite3";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { createDatabase } from "../src/db/database.js";

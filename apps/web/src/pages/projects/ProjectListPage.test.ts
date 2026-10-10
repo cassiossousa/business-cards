@@ -1,18 +1,17 @@
-import { flushPromises, mount } from "@vue/test-utils";
+import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { VueWrapper } from "@vue/test-utils";
 
-import type { CardProject } from "../api/types";
+import type { CardProject } from "../../api/types";
 import {
   ApiError,
   createProject,
   deleteProject,
   listProjects,
-} from "../api/projectsApi";
+} from "../../api/projectsApi";
 import ProjectListPage from "./ProjectListPage.vue";
 
-vi.mock("../api/projectsApi", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../api/projectsApi")>();
+vi.mock("../../api/projectsApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../api/projectsApi")>();
   return {
     ...actual,
     listProjects: vi.fn(),
