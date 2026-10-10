@@ -1,240 +1,124 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { createDatabase } from "../src/db/database.js";
+import { createCardProjectRepository } from "../src/modules/card-project/cardProjectRepository.js";
 import {
   createCardProjectService,
+  InvalidCardProjectFieldsError,
   InvalidCardProjectNameError,
-  MAX_CARD_PROJECT_NAME_LENGTH,
-} from "../src/modules/card-project/cardProjectService.ts";
-import type {
-  CardProject,
-  CardProjectRepository,
-} from "../src/modules/card-project/cardProjectRepository.ts";
+  InvalidCardTemplateError,
+} from "../src/modules/card-project/cardProjectService.js";
 
-const CREATED_AT = "2026-01-01T00:00:00.000Z";
+let database: ReturnType<typeof createDatabase>;
+let service: ReturnType<typeof createCardProjectService>;
 
-function createProject(overrides: Partial<CardProject> = {}): CardProject {
-  return {
-    id: "p1",
-    name: "Studio cards",
-    createdAt: CREATED_AT,
-    ...overrides,
-  };
-}
+beforeEach(() => {
+  database = createDatabase(":memory:");
+  service = createCardProjectService(createCardProjectRepository(database));
+});
 
-function createRecordingRepository() {
-  const projects: CardProject[] = [];
+afterEach(() => {
+  database.close();
+});
 
-  const repository: CardProjectRepository = {
-    list: vi.fn(() => [...projects]),
-
-    getById: vi.fn((id: string) => {
-      return projects.find((project) => project.id === id) ?? null;
-    }),
-
-    create: vi.fn((name: string) => {
-      const project = createProject({
-        id: `p${projects.length + 1}`,
-        name,
-      });
-
-      projects.push(project);
-
-      return project;
-    }),
-
-    updateName: vi.fn((id: string, name: string) => {
-      const index = projects.findIndex((project) => project.id === id);
-
-      if (index === -1) {
-        return null;
-      }
-
-      const existing = projects[index];
-
-      if (!existing) {
-        return null;
-      }
-
-      const updated: CardProject = {
-        ...existing,
-        name,
-      };
-
-      projects[index] = updated;
-
-      return updated;
-    }),
-
-    delete: vi.fn((id: string) => {
-      const index = projects.findIndex((project) => project.id === id);
-
-      if (index === -1) {
-        return false;
-      }
-
-      projects.splice(index, 1);
-
-      return true;
-    }),
-  };
-
-  return { repository, projects };
-}
-
-function createService() {
-  const { repository, projects } = createRecordingRepository();
-
-  return {
-    service: createCardProjectService(repository),
-    repository,
-    projects,
-  };
-}
-
-describe("CardProjectService", () => {
-  describe("createCardProject", () => {
-    it("stores the trimmed name", () => {
-      const { service, repository } = createService();
-
-      const created = service.createCardProject("  Studio cards  ");
-
-      expect(created.name).toBe("Studio cards");
-      expect(repository.create).toHaveBeenCalledExactlyOnceWith("Studio cards");
+describe("card project service", () => {
+  it("trims the project name and preserves submitted fields", () => {
+    const created = service.createCardProject("  Portfolio  ", "simple", {
+      fullName: "Alex Morgan",
     });
 
-    it("accepts a name of exactly 80 characters", () => {
-      const { service, repository } = createService();
-      const name = "x".repeat(MAX_CARD_PROJECT_NAME_LENGTH);
+    expect(created.name).toBe("Portfolio");
+    expect(created.templateId).toBe("simple");
+    expect(created.fields.fullName).toBe("Alex Morgan");
+  });
 
-      const created = service.createCardProject(name);
-
-      expect(created.name).toBe(name);
-      expect(repository.create).toHaveBeenCalledExactlyOnceWith(name);
+  it("creates a QR Code project with QR destination data", () => {
+    const created = service.createCardProject("QR portfolio", "qr-code", {
+      qrUrl: "https://example.com",
     });
 
-    it("rejects an empty name", () => {
-      const { service, repository } = createService();
+    expect(created.templateId).toBe("qr-code");
+    expect(created.fields.qrUrl).toBe("https://example.com");
+  });
 
-      expect(() => service.createCardProject("")).toThrowError(
-        InvalidCardProjectNameError,
-      );
+  it("rejects unsupported template IDs", () => {
+    expect(() => service.createCardProject("Portfolio", "premium", {})).toThrow(
+      InvalidCardTemplateError,
+    );
+  });
 
-      expect(() => service.createCardProject("")).toThrowError(
-        "Enter a project name.",
-      );
+  it("rejects blank and overlong project names", () => {
+    expect(() => service.createCardProject(" ", "simple", {})).toThrow(
+      InvalidCardProjectNameError,
+    );
 
-      expect(repository.create).not.toHaveBeenCalled();
+    expect(() =>
+      service.createCardProject("x".repeat(81), "simple", {}),
+    ).toThrow(InvalidCardProjectNameError);
+  });
+
+  it("rejects QR-only fields on a Simple project", () => {
+    expect(() =>
+      service.createCardProject("Portfolio", "simple", {
+        qrUrl: "https://example.com",
+      }),
+    ).toThrow(InvalidCardProjectFieldsError);
+  });
+
+  it("rejects non-string and overlong card fields", () => {
+    expect(() =>
+      service.createCardProject("Portfolio", "simple", {
+        fullName: 42,
+      }),
+    ).toThrow(InvalidCardProjectFieldsError);
+
+    expect(() =>
+      service.createCardProject("Portfolio", "simple", {
+        fullName: "x".repeat(201),
+      }),
+    ).toThrow(InvalidCardProjectFieldsError);
+  });
+
+  it("updates fields while keeping the original template", () => {
+    const created = service.createCardProject("QR portfolio", "qr-code", {
+      fullName: "Alex Morgan",
+      qrUrl: "https://example.com",
     });
 
-    it("rejects a whitespace-only name", () => {
-      const { service, repository } = createService();
-
-      expect(() => service.createCardProject("   ")).toThrowError(
-        "Enter a project name.",
-      );
-
-      expect(repository.create).not.toHaveBeenCalled();
+    const updated = service.updateCardProject(created.id, "Updated portfolio", {
+      fullName: "Jordan Lee",
+      qrUrl: "https://portfolio.example",
     });
 
-    it("rejects a name longer than 80 characters", () => {
-      const { service, repository } = createService();
-
-      expect(() =>
-        service.createCardProject("x".repeat(MAX_CARD_PROJECT_NAME_LENGTH + 1)),
-      ).toThrowError("CardProject names must be 80 characters or fewer.");
-
-      expect(repository.create).not.toHaveBeenCalled();
-    });
-
-    it("rejects non-string names", () => {
-      const { service, repository } = createService();
-
-      expect(() => service.createCardProject(42)).toThrowError(
-        "Project name must be a string.",
-      );
-
-      expect(repository.create).not.toHaveBeenCalled();
+    expect(updated).toMatchObject({
+      name: "Updated portfolio",
+      templateId: "qr-code",
+      fields: {
+        fullName: "Jordan Lee",
+        qrUrl: "https://portfolio.example",
+      },
     });
   });
 
-  describe("listCardProjects", () => {
-    it("returns the repository list", () => {
-      const { service, repository, projects } = createService();
-      projects.push(createProject());
-
-      expect(service.listCardProjects()).toEqual([createProject()]);
-
-      expect(repository.list).toHaveBeenCalledExactlyOnceWith();
-    });
+  it("returns null when updating a missing project", () => {
+    expect(service.updateCardProject("missing", "Portfolio", {})).toBeNull();
   });
 
-  describe("getCardProject", () => {
-    it("returns an existing project", () => {
-      const { service, repository, projects } = createService();
-      const existing = createProject();
-
-      projects.push(existing);
-
-      expect(service.getCardProject("p1")).toEqual(existing);
-      expect(repository.getById).toHaveBeenCalledExactlyOnceWith("p1");
-    });
-
-    it("returns null for an unknown project", () => {
-      const { service, repository } = createService();
-
-      expect(service.getCardProject("missing")).toBeNull();
-
-      expect(repository.getById).toHaveBeenCalledExactlyOnceWith("missing");
-    });
+  it("rejects an empty QR destination", () => {
+    expect(() =>
+      service.createCardProject("QR portfolio", "qr-code", {
+        fullName: "Alex Morgan",
+        qrUrl: "",
+      }),
+    ).toThrow("Enter a QR code destination.");
   });
 
-  describe("updateCardProject", () => {
-    it("trims the name and delegates the update", () => {
-      const { service, repository, projects } = createService();
-      projects.push(createProject());
-
-      const updated = service.updateCardProject("p1", "  Updated cards  ");
-
-      expect(updated).toEqual(createProject({ name: "Updated cards" }));
-
-      expect(repository.updateName).toHaveBeenCalledExactlyOnceWith(
-        "p1",
-        "Updated cards",
-      );
-    });
-
-    it("returns null when the project does not exist", () => {
-      const { service, repository } = createService();
-
-      expect(service.updateCardProject("missing", "Updated cards")).toBeNull();
-
-      expect(repository.updateName).toHaveBeenCalledExactlyOnceWith(
-        "missing",
-        "Updated cards",
-      );
-    });
-
-    it("rejects invalid names without calling the repository", () => {
-      const { service, repository } = createService();
-
-      expect(() => service.updateCardProject("p1", "   ")).toThrowError(
-        "Enter a project name.",
-      );
-
-      expect(repository.updateName).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("deleteCardProject", () => {
-    it("delegates deletion and reports whether the project existed", () => {
-      const { service, repository, projects } = createService();
-      projects.push(createProject());
-
-      expect(service.deleteCardProject("p1")).toBe(true);
-      expect(service.deleteCardProject("missing")).toBe(false);
-
-      expect(repository.delete).toHaveBeenNthCalledWith(1, "p1");
-      expect(repository.delete).toHaveBeenNthCalledWith(2, "missing");
-    });
+  it("rejects non-HTTP QR destinations", () => {
+    expect(() =>
+      service.createCardProject("QR portfolio", "qr-code", {
+        fullName: "Alex Morgan",
+        qrUrl: "javascript:alert(1)",
+      }),
+    ).toThrow("valid HTTP or HTTPS QR code destination");
   });
 });

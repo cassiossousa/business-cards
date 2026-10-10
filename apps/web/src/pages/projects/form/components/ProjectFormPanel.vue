@@ -13,15 +13,10 @@ defineProps<{
 
 const emit = defineEmits<{
   "update:name": [value: string];
-  "clear-error": [];
   submit: [];
   cancel: [];
+  "clear-error": [];
 }>();
-
-function onNameUpdate(value: string): void {
-  emit("update:name", value);
-  emit("clear-error");
-}
 </script>
 
 <template>
@@ -31,9 +26,7 @@ function onNameUpdate(value: string): void {
     </p>
 
     <template v-else-if="loadError">
-      <p class="form-feedback" role="alert">
-        {{ loadError }}
-      </p>
+      <p class="form-feedback" role="alert">{{ loadError }}</p>
       <RouterLink class="text-link" :to="{ name: 'projects' }">
         Back to projects
       </RouterLink>
@@ -55,21 +48,27 @@ function onNameUpdate(value: string): void {
           required
           :disabled="isSubmitting"
           :aria-invalid="Boolean(formError)"
-          :aria-describedby="formError ? 'project-name-error' : undefined"
-          @update:model-value="onNameUpdate"
+          :aria-describedby="formError ? 'project-form-error' : undefined"
+          @update:model-value="
+            emit('update:name', $event);
+            emit('clear-error');
+          "
         />
         <p class="field-hint">
           Use a name that helps you recognize this project.
         </p>
-        <p
-          v-if="formError"
-          id="project-name-error"
-          class="form-feedback"
-          role="alert"
-        >
-          {{ formError }}
-        </p>
       </div>
+
+      <slot />
+
+      <p
+        v-if="formError"
+        id="project-form-error"
+        class="form-feedback"
+        role="alert"
+      >
+        {{ formError }}
+      </p>
 
       <div class="form-actions">
         <AppButton
@@ -80,6 +79,7 @@ function onNameUpdate(value: string): void {
         >
           Cancel
         </AppButton>
+
         <AppButton variant="primary" type="submit" :disabled="isSubmitting">
           {{
             isSubmitting
@@ -98,11 +98,18 @@ function onNameUpdate(value: string): void {
 
 <style scoped>
 .card {
+  display: grid;
+  gap: var(--space-5);
   padding: var(--space-6);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
+}
+
+.card form {
+  display: grid;
+  gap: var(--space-5);
 }
 
 .card-title {
@@ -126,12 +133,14 @@ function onNameUpdate(value: string): void {
   margin: 0;
   color: var(--text-secondary);
   font-size: var(--text-xs);
+  line-height: 1.5;
 }
 
 .form-feedback {
-  margin: var(--space-2) 0 0;
+  margin: 0;
   color: var(--danger);
   font-size: var(--text-sm);
+  line-height: 1.5;
 }
 
 .form-actions {
@@ -139,10 +148,10 @@ function onNameUpdate(value: string): void {
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: var(--space-3);
-  margin-top: var(--space-6);
 }
 
 .state-panel {
+  margin: 0;
   padding: var(--space-6) 0;
   color: var(--text-secondary);
 }

@@ -1,52 +1,69 @@
 import cors from "@fastify/cors";
+import Fastify, { type FastifyInstance } from "fastify";
 import type Database from "better-sqlite3";
-import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 
-import { createCardProjectRepository } from "./modules/card-project/cardProjectRepository.ts";
-import { cardProjectRoutes } from "./modules/card-project/cardProjectRoutes.ts";
-import {
-  createCardProjectService,
-  InvalidCardProjectNameError,
-} from "./modules/card-project/cardProjectService.ts";
+import { createCardProjectRepository } from "./modules/card-project/cardProjectRepository.js";
+import { cardProjectRoutes } from "./modules/card-project/cardProjectRoutes.js";
+import { createCardProjectService } from "./modules/card-project/cardProjectService.js";
 
-export interface AppOptions {
+export interface BuildAppOptions {
   database: Database.Database;
-  corsOrigin?: string;
-  logger?: boolean;
+  webOrigin?: string;
 }
 
-export interface ApiErrorBody {
-  error: {
-    code: string;
-    message: string;
-  };
-}
-
-export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
+export function buildApp({
+  database,
+  webOrigin = "http://localhost:5173",
+}: BuildAppOptions): FastifyInstance {
   const app = Fastify({
-    logger: options.logger ?? false,
+    logger: false,
     ajv: {
       customOptions: {
-        // Reject implicit type coercion and unknown properties.
         coerceTypes: false,
         removeAdditional: false,
       },
     },
   });
 
-  if (options.corsOrigin) {
-    void app.register(cors, {
-      origin: options.corsOrigin,
-      methods: ["GET", "HEAD", "POST", "PUT", "DELETE"],
-    });
-  }
-
-  const repository = createCardProjectRepository(options.database);
-
+  const repository = createCardProjectRepository(database);
   const service = createCardProjectService(repository);
 
-  app.setNotFoundHandler(async (_request, reply) => {
-    return reply.status(404).send({
+  void app.register(cors, {
+    origin: webOrigin,
+    methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
+  });
+
+  app.setErrorHandler((error, request, reply) => {
+    if (error.validation) {
+      return reply.code(400).send({
+        error: {
+          code: "INVALID_REQUEST",
+          message: error.message || "Request validation failed.",
+        },
+      });
+    }
+
+    if (error.statusCode === 400 || error.code === "FST_ERR_CTP_INVALID_JSON") {
+      return reply.code(400).send({
+        error: {
+          code: "INVALID_REQUEST",
+          message: "The request body is invalid.",
+        },
+      });
+    }
+
+    request.log.error(error);
+
+    return reply.code(500).send({
+      error: {
+        code: "INTERNAL",
+        message: "Something went wrong.",
+      },
+    });
+  });
+
+  app.setNotFoundHandler((_request, reply) => {
+    return reply.code(404).send({
       error: {
         code: "NOT_FOUND",
         message: "Resource not found.",
@@ -54,45 +71,16 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     });
   });
 
-  app.setErrorHandler((error: FastifyError, request, reply) => {
-    if (error instanceof InvalidCardProjectNameError) {
-      return reply.status(400).send({
-        error: {
-          code: "INVALID_NAME",
-          message: error.message,
-        },
-      });
-    }
-
-    const status = error.statusCode ?? 500;
-
-    if (status >= 500) {
-      request.log.error(error);
-
-      return reply.status(500).send({
-        error: {
-          code: "INTERNAL",
-          message: "Something went wrong.",
-        },
-      });
-    }
-
-    const code = status === 404 ? "NOT_FOUND" : "INVALID_REQUEST";
-
-    return reply.status(status).send({
-      error: {
-        code,
-        message: error.message,
-      },
-    });
-  });
+  app.get("/api/health", async () => ({ status: "ok" }));
 
   void app.register(cardProjectRoutes, {
     prefix: "/api",
     service,
   });
 
-  await app.ready();
+  app.addHook("onClose", async () => {
+    database.close();
+  });
 
   return app;
 }

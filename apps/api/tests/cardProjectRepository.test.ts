@@ -1,14 +1,10 @@
-import type Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createDatabase } from "../src/db/database.ts";
-import {
-  createCardProjectRepository,
-  type CardProjectRepository,
-} from "../src/modules/card-project/cardProjectRepository.ts";
+import { createDatabase } from "../src/db/database.js";
+import { createCardProjectRepository } from "../src/modules/card-project/cardProjectRepository.js";
 
-let database: Database.Database;
-let repository: CardProjectRepository;
+let database: ReturnType<typeof createDatabase>;
+let repository: ReturnType<typeof createCardProjectRepository>;
 
 beforeEach(() => {
   database = createDatabase(":memory:");
@@ -19,99 +15,77 @@ afterEach(() => {
   database.close();
 });
 
-function insertProject(id: string, name: string, createdAt: string): void {
-  database
-    .prepare(
-      `INSERT INTO projects (id, name, created_at)
-       VALUES (?, ?, ?)`,
-    )
-    .run(id, name, createdAt);
-}
+describe("card project repository", () => {
+  it("persists a project with its template and field values", () => {
+    const created = repository.create("Portfolio", "qr-code", {
+      fullName: "Alex Morgan",
+      qrUrl: "https://example.com",
+    });
 
-describe("CardProjectRepository", () => {
-  describe("create", () => {
-    it("persists a project with a generated id and creation date", () => {
-      const created = repository.create("Studio cards");
+    expect(repository.getById(created.id)).toEqual(created);
+    expect(repository.list()).toContainEqual(created);
+  });
 
-      expect(created.id).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-      );
-      expect(created.name).toBe("Studio cards");
-      expect(Number.isNaN(Date.parse(created.createdAt))).toBe(false);
-      expect(repository.getById(created.id)).toEqual(created);
+  it("updates project fields without changing its template", () => {
+    const created = repository.create("Portfolio", "qr-code", {
+      fullName: "Alex Morgan",
+      qrUrl: "https://example.com",
+    });
+
+    const updated = repository.update(created.id, "Updated portfolio", {
+      fullName: "Jordan Lee",
+      qrUrl: "https://portfolio.example",
+    });
+
+    expect(updated).toMatchObject({
+      id: created.id,
+      name: "Updated portfolio",
+      templateId: "qr-code",
+      fields: {
+        fullName: "Jordan Lee",
+        qrUrl: "https://portfolio.example",
+      },
     });
   });
 
-  describe("getById", () => {
-    it("returns null when a project does not exist", () => {
-      expect(repository.getById("missing")).toBeNull();
-    });
+  it("returns null when updating a nonexistent project", () => {
+    expect(
+      repository.update("missing", "Unknown", { fullName: "Unknown" }),
+    ).toBeNull();
   });
 
-  describe("list", () => {
-    it("returns an empty list when there are no projects", () => {
-      expect(repository.list()).toEqual([]);
+  it("deletes the project and its saved card document", () => {
+    const created = repository.create("Temporary", "simple", {
+      fullName: "Alex Morgan",
     });
 
-    it("returns the most recently created project first", () => {
-      insertProject("older", "Older project", "2026-01-01T10:00:00.000Z");
+    expect(repository.delete(created.id)).toBe(true);
+    expect(repository.getById(created.id)).toBeNull();
+    expect(repository.delete(created.id)).toBe(false);
 
-      insertProject("newer", "Newer project", "2026-01-02T10:00:00.000Z");
+    const remainingDocuments = database
+      .prepare("SELECT project_id FROM card_project_documents")
+      .all();
 
-      expect(repository.list()).toEqual([
-        {
-          id: "newer",
-          name: "Newer project",
-          createdAt: "2026-01-02T10:00:00.000Z",
-        },
-        {
-          id: "older",
-          name: "Older project",
-          createdAt: "2026-01-01T10:00:00.000Z",
-        },
-      ]);
-    });
-
-    it("breaks created_at ties deterministically by id", () => {
-      const timestamp = "2026-01-01T10:00:00.000Z";
-
-      insertProject("a", "Project A", timestamp);
-      insertProject("b", "Project B", timestamp);
-
-      expect(repository.list().map((project) => project.id)).toEqual([
-        "b",
-        "a",
-      ]);
-    });
+    expect(remainingDocuments).toEqual([]);
   });
 
-  describe("updateName", () => {
-    it("updates the name without changing the creation date", () => {
-      const original = repository.create("Original name");
+  it("treats a preexisting project without a card document as Simple", () => {
+    database
+      .prepare("INSERT INTO projects (id, name, created_at) VALUES (?, ?, ?)")
+      .run("legacy-project", "Older project", "2026-01-01T00:00:00.000Z");
 
-      const updated = repository.updateName(original.id, "Updated name");
-
-      expect(updated).toEqual({
-        ...original,
-        name: "Updated name",
-      });
-    });
-
-    it("returns null when updating an unknown id", () => {
-      expect(repository.updateName("missing", "Updated name")).toBeNull();
-    });
-  });
-
-  describe("delete", () => {
-    it("removes an existing project and reports true", () => {
-      const created = repository.create("Studio cards");
-
-      expect(repository.delete(created.id)).toBe(true);
-      expect(repository.getById(created.id)).toBeNull();
-    });
-
-    it("reports false for an unknown id", () => {
-      expect(repository.delete("missing")).toBe(false);
+    expect(repository.getById("legacy-project")).toMatchObject({
+      id: "legacy-project",
+      name: "Older project",
+      templateId: "simple",
+      fields: {
+        fullName: "",
+        role: "",
+        email: "",
+        phone: "",
+        website: "",
+      },
     });
   });
 });

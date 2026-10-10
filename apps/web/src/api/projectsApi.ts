@@ -1,4 +1,9 @@
-import type { CardProject, CardProjectListResponse } from "./types";
+import type {
+  CardProject,
+  CardProjectListResponse,
+  CreateCardProjectInput,
+  UpdateCardProjectInput,
+} from "./types";
 
 const apiOrigin =
   import.meta.env.VITE_API_ORIGIN?.replace(/\/$/, "") ??
@@ -88,23 +93,28 @@ export function getProject(id: string): Promise<CardProject> {
   return requestJson<CardProject>(`/api/projects/${encodeURIComponent(id)}`);
 }
 
-export function createProject(name: string): Promise<CardProject> {
+export function createProject(
+  input: CreateCardProjectInput | string,
+): Promise<CardProject> {
+  const body = typeof input === "string" ? { name: input } : input;
+
   return requestJson<CardProject>("/api/projects", {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ name }),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
   });
 }
 
-export function updateProject(id: string, name: string): Promise<CardProject> {
+export function updateProject(
+  id: string,
+  input: UpdateCardProjectInput | string,
+): Promise<CardProject> {
+  const body = typeof input === "string" ? { name: input } : input;
+
   return requestJson<CardProject>(`/api/projects/${encodeURIComponent(id)}`, {
     method: "PUT",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ name }),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
   });
 }
 
