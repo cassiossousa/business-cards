@@ -1,54 +1,110 @@
-import type { FastifyInstance, FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 
-import type { CardProjectService } from "./cardProjectService.js";
+import type { CardProjectService } from "./cardProjectService.ts";
 
-interface CardProjectRoutesOptions {
+interface CardProjectRouteOptions {
   service: CardProjectService;
 }
 
-interface CreateProjectBody {
-  name: string;
-}
-
-interface DeleteProjectParams {
+interface CardProjectIdParams {
   id: string;
 }
 
-const createProjectBodySchema = {
+interface CardProjectNameBody {
+  name: string;
+}
+
+const cardProjectNameBodySchema = {
   type: "object",
-  required: ["name"],
   additionalProperties: false,
+  required: ["name"],
   properties: {
-    name: { type: "string" },
+    name: {
+      type: "string",
+      maxLength: 200,
+    },
   },
 } as const;
 
 export const cardProjectRoutes: FastifyPluginAsync<
-  CardProjectRoutesOptions
-> = async (app: FastifyInstance, options) => {
-  const { service } = options;
-
+  CardProjectRouteOptions
+> = async (app, { service }) => {
   app.get("/projects", async () => ({
     projects: service.listCardProjects(),
   }));
 
-  app.post<{ Body: CreateProjectBody }>(
+  app.get<{ Params: CardProjectIdParams }>(
+    "/projects/:id",
+    async (request, reply) => {
+      const project = service.getCardProject(request.params.id);
+
+      if (project === null) {
+        return reply.status(404).send({
+          error: {
+            code: "NOT_FOUND",
+            message: "Project not found.",
+          },
+        });
+      }
+
+      return project;
+    },
+  );
+
+  app.post<{ Body: CardProjectNameBody }>(
     "/projects",
-    { schema: { body: createProjectBodySchema } },
+    {
+      schema: {
+        body: cardProjectNameBodySchema,
+      },
+    },
     async (request, reply) => {
       const project = service.createCardProject(request.body.name);
+
       return reply.status(201).send(project);
     },
   );
 
-  app.delete<{ Params: DeleteProjectParams }>(
+  app.put<{
+    Params: CardProjectIdParams;
+    Body: CardProjectNameBody;
+  }>(
+    "/projects/:id",
+    {
+      schema: {
+        body: cardProjectNameBodySchema,
+      },
+    },
+    async (request, reply) => {
+      const project = service.updateCardProject(
+        request.params.id,
+        request.body.name,
+      );
+
+      if (project === null) {
+        return reply.status(404).send({
+          error: {
+            code: "NOT_FOUND",
+            message: "Project not found.",
+          },
+        });
+      }
+
+      return project;
+    },
+  );
+
+  app.delete<{ Params: CardProjectIdParams }>(
     "/projects/:id",
     async (request, reply) => {
       const deleted = service.deleteCardProject(request.params.id);
 
       if (!deleted) {
         return reply.status(404).send({
-          error: { code: "NOT_FOUND", message: "Project not found." },
+          error: {
+            code: "NOT_FOUND",
+            message: "Project not found.",
+          },
         });
       }
 

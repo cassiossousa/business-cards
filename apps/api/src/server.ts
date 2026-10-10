@@ -2,8 +2,8 @@ import "dotenv/config";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-import { buildApp } from "./app.js";
-import { createDatabase } from "./db/database.js";
+import { buildApp } from "./app.ts";
+import { createDatabase } from "./db/database.ts";
 
 const port = Number(process.env.PORT ?? 8787);
 const host = process.env.HOST ?? "localhost";

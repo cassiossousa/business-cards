@@ -10,61 +10,85 @@ export interface CardProject {
 
 export interface CardProjectRepository {
   list(): CardProject[];
+  getById(id: string): CardProject | null;
   create(name: string): CardProject;
+  updateName(id: string, name: string): CardProject | null;
   delete(id: string): boolean;
 }
 
-interface ProjectRow {
+interface CardProjectRow {
   id: string;
   name: string;
-  created_at: string;
+  createdAt: string;
 }
 
-function toProject(row: ProjectRow): CardProject {
+const CARD_PROJECT_COLUMNS = "id, name, created_at AS createdAt";
+
+export function createCardProjectRepository(
+  database: Database.Database,
+): CardProjectRepository {
+  const listStatement = database.prepare(
+    `SELECT ${CARD_PROJECT_COLUMNS}
+     FROM projects
+     ORDER BY created_at DESC, id DESC`,
+  );
+
+  const getByIdStatement = database.prepare(
+    `SELECT ${CARD_PROJECT_COLUMNS}
+     FROM projects
+     WHERE id = ?`,
+  );
+
+  const insertStatement = database.prepare(
+    `INSERT INTO projects (id, name, created_at)
+     VALUES (?, ?, ?)`,
+  );
+
+  const updateNameStatement = database.prepare(
+    `UPDATE projects
+     SET name = ?
+     WHERE id = ?`,
+  );
+
+  const deleteStatement = database.prepare("DELETE FROM projects WHERE id = ?");
+
+  function getById(id: string): CardProject | null {
+    const row = getByIdStatement.get(id) as CardProjectRow | undefined;
+
+    return row ?? null;
+  }
+
   return {
-    id: row.id,
-    name: row.name,
-    createdAt: row.created_at,
+    list(): CardProject[] {
+      return listStatement.all() as CardProject[];
+    },
+
+    getById,
+
+    create(name: string): CardProject {
+      const project: CardProject = {
+        id: randomUUID(),
+        name,
+        createdAt: new Date().toISOString(),
+      };
+
+      insertStatement.run(project.id, project.name, project.createdAt);
+
+      return project;
+    },
+
+    updateName(id: string, name: string): CardProject | null {
+      const result = updateNameStatement.run(name, id);
+
+      if (result.changes === 0) {
+        return null;
+      }
+
+      return getById(id);
+    },
+
+    delete(id: string): boolean {
+      return deleteStatement.run(id).changes > 0;
+    },
   };
-}
-
-export class SqliteProjectRepository implements CardProjectRepository {
-  constructor(private readonly database: Database.Database) {}
-
-  list(): CardProject[] {
-    const rows = this.database
-      .prepare(
-        `SELECT id, name, created_at
-         FROM projects
-         ORDER BY created_at DESC, id ASC`,
-      )
-      .all() as ProjectRow[];
-
-    return rows.map(toProject);
-  }
-
-  create(name: string): CardProject {
-    const cardProject: CardProject = {
-      id: randomUUID(),
-      name,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.database
-      .prepare(
-        `INSERT INTO projects (id, name, created_at)
-         VALUES (?, ?, ?)`,
-      )
-      .run(cardProject.id, cardProject.name, cardProject.createdAt);
-
-    return cardProject;
-  }
-
-  delete(id: string): boolean {
-    const result = this.database
-      .prepare("DELETE FROM projects WHERE id = ?")
-      .run(id);
-
-    return result.changes > 0;
-  }
 }

@@ -98,7 +98,10 @@ describe("createProject", () => {
       "http://localhost:8787/api/projects",
       expect.objectContaining({
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+        },
         body: JSON.stringify({ name: "Rounded corners" }),
       }),
     );

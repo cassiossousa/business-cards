@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [vue()],
   test: {
     environment: "jsdom",
+    setupFiles: ["./test/setup.ts"],
     include: ["src/**/*.test.ts"],
     clearMocks: true,
     restoreMocks: true,
@@ -21,6 +22,8 @@ export default defineConfig({
         "src/main.ts",
         // Pure type declarations; no runtime behavior to cover.
         "src/api/types.ts",
+        "vite.config.ts",
+        "vitest.config.ts",
       ],
       thresholds: {
         lines: 70,

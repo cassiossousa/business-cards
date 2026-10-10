@@ -2,18 +2,12 @@
 import { onMounted, onUnmounted, ref } from "vue";
 
 import type { CardProject } from "../../api/types";
-import {
-  ApiError,
-  createProject,
-  deleteProject,
-  listProjects,
-} from "../../api/projectsApi";
+import { ApiError, deleteProject, listProjects } from "../../api/projectsApi";
 import AppButton from "../../components/AppButton.vue";
-import AppInput from "../../components/AppInput.vue";
 
 type LoadState = "loading" | "error" | "ready";
 
-interface FormFeedback {
+interface Feedback {
   tone: "success" | "error";
   text: string;
 }
@@ -24,15 +18,11 @@ const projects = ref<CardProject[]>([]);
 const loadState = ref<LoadState>("loading");
 const showLoadingState = ref(false);
 
-let loadingTimer: ReturnType<typeof setTimeout> | undefined;
-
-const newName = ref("");
-const isSubmitting = ref(false);
-const formFeedback = ref<FormFeedback | null>(null);
-
+const deleteFeedback = ref<Feedback | null>(null);
 const pendingDeleteId = ref<string | null>(null);
 const deletingId = ref<string | null>(null);
-const deleteFeedback = ref<FormFeedback | null>(null);
+
+let loadingTimer: ReturnType<typeof setTimeout> | undefined;
 
 function clearLoadingTimer(): void {
   if (loadingTimer !== undefined) {
@@ -68,47 +58,6 @@ async function loadProjects(): Promise<void> {
   }
 }
 
-async function submitCreate(): Promise<void> {
-  const name = newName.value.trim();
-
-  if (!name) {
-    formFeedback.value = {
-      tone: "error",
-      text: "Enter a project name.",
-    };
-    return;
-  }
-
-  if (isSubmitting.value) {
-    return;
-  }
-
-  isSubmitting.value = true;
-  formFeedback.value = null;
-
-  try {
-    const project = await createProject(name);
-
-    projects.value = [project, ...projects.value];
-    newName.value = "";
-
-    formFeedback.value = {
-      tone: "success",
-      text: `Created “${project.name}”.`,
-    };
-  } catch (error) {
-    formFeedback.value = {
-      tone: "error",
-      text:
-        error instanceof ApiError
-          ? error.message
-          : "Could not create the project. Try again.",
-    };
-  } finally {
-    isSubmitting.value = false;
-  }
-}
-
 function requestDelete(project: CardProject): void {
   pendingDeleteId.value = project.id;
   deleteFeedback.value = null;
@@ -116,7 +65,7 @@ function requestDelete(project: CardProject): void {
 
 function cancelDelete(): void {
   pendingDeleteId.value = null;
-  deletingId.value = null;
+  deleteFeedback.value = null;
 }
 
 async function confirmDelete(): Promise<void> {
@@ -127,6 +76,7 @@ async function confirmDelete(): Promise<void> {
   }
 
   deletingId.value = id;
+  deleteFeedback.value = null;
 
   try {
     await deleteProject(id);
@@ -134,7 +84,6 @@ async function confirmDelete(): Promise<void> {
     projects.value = projects.value.filter((project) => project.id !== id);
 
     pendingDeleteId.value = null;
-    deleteFeedback.value = null;
   } catch (error) {
     deleteFeedback.value = {
       tone: "error",
@@ -172,39 +121,16 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <h2 class="page-heading">Your projects</h2>
+  <div class="page-heading-row">
+    <h2 class="page-heading">Your projects</h2>
 
-  <section class="card" aria-labelledby="create-project-title">
-    <h3 id="create-project-title" class="card-title">Start a new project</h3>
-
-    <form class="create-form" @submit.prevent="submitCreate">
-      <div class="field">
-        <label for="project-name">Project name</label>
-
-        <AppInput
-          id="project-name"
-          v-model="newName"
-          name="project-name"
-          placeholder="e.g. Studio cards"
-          :disabled="isSubmitting"
-          autocomplete="off"
-        />
-      </div>
-
-      <AppButton variant="primary" type="submit" :disabled="isSubmitting">
-        {{ isSubmitting ? "Creating…" : "Create project" }}
-      </AppButton>
-    </form>
-
-    <p
-      v-if="formFeedback"
-      class="form-feedback"
-      role="status"
-      :data-tone="formFeedback.tone"
+    <RouterLink
+      class="action-link action-link--primary"
+      :to="{ name: 'project-new' }"
     >
-      {{ formFeedback.text }}
-    </p>
-  </section>
+      Create project
+    </RouterLink>
+  </div>
 
   <section class="card" aria-labelledby="project-list-title">
     <h3 id="project-list-title" class="card-title">All projects</h3>
@@ -242,7 +168,7 @@ onUnmounted(() => {
 
     <ul v-else class="project-list">
       <li v-for="project in projects" :key="project.id">
-        <div>
+        <div class="project-details">
           <span class="project-name">
             {{ project.name }}
           </span>
@@ -253,6 +179,16 @@ onUnmounted(() => {
         </div>
 
         <div v-if="pendingDeleteId !== project.id" class="project-actions">
+          <RouterLink
+            class="action-link action-link--secondary"
+            :to="{
+              name: 'project-edit',
+              params: { id: project.id },
+            }"
+          >
+            Edit
+          </RouterLink>
+
           <AppButton
             variant="danger"
             type="button"
@@ -287,22 +223,27 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.page-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
 .page-heading {
-  margin: 0 0 var(--space-6);
+  margin: 0;
   font: var(--font-h2);
   letter-spacing: var(--tracking-tight);
 }
 
 .card {
+  padding: var(--space-6);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: var(--space-6);
   box-shadow: var(--shadow-card);
-}
-
-.card + .card {
-  margin-top: var(--space-6);
 }
 
 .card-title {
@@ -310,50 +251,59 @@ onUnmounted(() => {
   font: var(--font-h3);
 }
 
-.create-form {
-  display: flex;
-  gap: var(--space-3);
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-
-.create-form .field {
-  flex: 1 1 15rem;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.create-form label {
-  font-size: var(--text-sm);
+.action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
   font-weight: 500;
-  color: var(--text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.action-link--primary {
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.action-link--primary:hover {
+  background: var(--accent-hover);
+}
+
+.action-link--secondary {
+  color: var(--text);
+  background: transparent;
+  border-color: var(--border);
+}
+
+.action-link--secondary:hover {
+  background: var(--page-bg);
+}
+
+.action-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .form-feedback {
   margin: var(--space-3) 0 0;
   font-size: var(--text-sm);
-  min-height: 0;
-}
-
-.form-feedback:empty {
-  display: none;
 }
 
 .form-feedback[data-tone="error"] {
   color: var(--danger);
 }
 
-.form-feedback[data-tone="success"] {
-  color: var(--text-secondary);
-}
-
 .project-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .project-list li {
@@ -367,15 +317,20 @@ onUnmounted(() => {
 }
 
 .project-list li:last-child {
-  border-bottom: none;
   padding-bottom: var(--space-1);
+  border-bottom: none;
 }
 
 .project-list li:first-child {
   padding-top: var(--space-1);
 }
 
+.project-details {
+  min-width: 0;
+}
+
 .project-name {
+  display: block;
   font-weight: 550;
   overflow-wrap: anywhere;
 }
@@ -388,8 +343,10 @@ onUnmounted(() => {
 
 .project-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-2);
   margin-left: auto;
+  flex-wrap: wrap;
 }
 
 .state-panel {
@@ -399,12 +356,12 @@ onUnmounted(() => {
 }
 
 .skeleton-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .skeleton-list li {
@@ -432,16 +389,16 @@ onUnmounted(() => {
 }
 
 @media (max-width: 560px) {
+  .page-heading-row {
+    align-items: stretch;
+  }
+
+  .page-heading-row .action-link {
+    width: 100%;
+  }
+
   .card {
     padding: var(--space-4);
-  }
-
-  .create-form .field {
-    flex-basis: 100%;
-  }
-
-  .create-form :deep(button) {
-    flex: 1;
   }
 
   .project-actions {
@@ -449,6 +406,7 @@ onUnmounted(() => {
     margin-left: 0;
   }
 
+  .project-actions .action-link,
   .project-actions :deep(button) {
     flex: 1;
   }

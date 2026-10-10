@@ -55,8 +55,11 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 
   try {
     response = await fetch(`${apiOrigin}${path}`, {
-      headers: { accept: "application/json" },
       ...init,
+      headers: {
+        accept: "application/json",
+        ...init?.headers,
+      },
     });
   } catch {
     throw new ApiError(
@@ -81,10 +84,26 @@ export function listProjects(): Promise<CardProjectListResponse> {
   return requestJson<CardProjectListResponse>("/api/projects");
 }
 
-export async function createProject(name: string): Promise<CardProject> {
-  return await requestJson<CardProject>("/api/projects", {
+export function getProject(id: string): Promise<CardProject> {
+  return requestJson<CardProject>(`/api/projects/${encodeURIComponent(id)}`);
+}
+
+export function createProject(name: string): Promise<CardProject> {
+  return requestJson<CardProject>("/api/projects", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function updateProject(id: string, name: string): Promise<CardProject> {
+  return requestJson<CardProject>(`/api/projects/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: {
+      "content-type": "application/json",
+    },
     body: JSON.stringify({ name }),
   });
 }

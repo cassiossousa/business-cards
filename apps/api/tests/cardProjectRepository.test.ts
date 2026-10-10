@@ -1,32 +1,50 @@
-import { createDatabase } from "../src/db/database.js";
-import { SqliteProjectRepository } from "../src/modules/card-project/cardProjectRepository.js";
-
 import type Database from "better-sqlite3";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { createDatabase } from "../src/db/database.ts";
+import {
+  createCardProjectRepository,
+  type CardProjectRepository,
+} from "../src/modules/card-project/cardProjectRepository.ts";
 
 let database: Database.Database;
-let repository: SqliteProjectRepository;
+let repository: CardProjectRepository;
 
 beforeEach(() => {
   database = createDatabase(":memory:");
-  repository = new SqliteProjectRepository(database);
+  repository = createCardProjectRepository(database);
 });
 
-describe("SqliteProjectRepository", () => {
+afterEach(() => {
+  database.close();
+});
+
+function insertProject(id: string, name: string, createdAt: string): void {
+  database
+    .prepare(
+      `INSERT INTO projects (id, name, created_at)
+       VALUES (?, ?, ?)`,
+    )
+    .run(id, name, createdAt);
+}
+
+describe("CardProjectRepository", () => {
   describe("create", () => {
     it("persists a project with a generated id and creation date", () => {
-      const project = repository.create("Studio cards");
+      const created = repository.create("Studio cards");
 
-      expect(project.id).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      expect(created.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
       );
-      expect(project.name).toBe("Studio cards");
-      expect(new Date(project.createdAt).toString()).not.toBe("Invalid Date");
+      expect(created.name).toBe("Studio cards");
+      expect(Number.isNaN(Date.parse(created.createdAt))).toBe(false);
+      expect(repository.getById(created.id)).toEqual(created);
+    });
+  });
 
-      const row = database
-        .prepare("SELECT id, name FROM projects WHERE id = ?")
-        .get(project.id) as { id: string; name: string };
-      expect(row).toEqual({ id: project.id, name: "Studio cards" });
+  describe("getById", () => {
+    it("returns null when a project does not exist", () => {
+      expect(repository.getById("missing")).toBeNull();
     });
   });
 
@@ -36,45 +54,64 @@ describe("SqliteProjectRepository", () => {
     });
 
     it("returns the most recently created project first", () => {
-      database
-        .prepare("INSERT INTO projects (id, name, created_at) VALUES (?, ?, ?)")
-        .run("a", "Oldest", "2026-01-01T00:00:00.000Z");
-      database
-        .prepare("INSERT INTO projects (id, name, created_at) VALUES (?, ?, ?)")
-        .run("b", "Newest", "2026-02-01T00:00:00.000Z");
+      insertProject("older", "Older project", "2026-01-01T10:00:00.000Z");
 
-      const projects = repository.list();
+      insertProject("newer", "Newer project", "2026-01-02T10:00:00.000Z");
 
-      expect(projects.map((project) => project.name)).toEqual([
-        "Newest",
-        "Oldest",
+      expect(repository.list()).toEqual([
+        {
+          id: "newer",
+          name: "Newer project",
+          createdAt: "2026-01-02T10:00:00.000Z",
+        },
+        {
+          id: "older",
+          name: "Older project",
+          createdAt: "2026-01-01T10:00:00.000Z",
+        },
       ]);
     });
 
     it("breaks created_at ties deterministically by id", () => {
-      database
-        .prepare("INSERT INTO projects (id, name, created_at) VALUES (?, ?, ?)")
-        .run("zz", "Last by id", "2026-01-01T00:00:00.000Z");
-      database
-        .prepare("INSERT INTO projects (id, name, created_at) VALUES (?, ?, ?)")
-        .run("aa", "First by id", "2026-01-01T00:00:00.000Z");
+      const timestamp = "2026-01-01T10:00:00.000Z";
 
-      const projects = repository.list();
+      insertProject("a", "Project A", timestamp);
+      insertProject("b", "Project B", timestamp);
 
-      expect(projects.map((project) => project.id)).toEqual(["aa", "zz"]);
+      expect(repository.list().map((project) => project.id)).toEqual([
+        "b",
+        "a",
+      ]);
+    });
+  });
+
+  describe("updateName", () => {
+    it("updates the name without changing the creation date", () => {
+      const original = repository.create("Original name");
+
+      const updated = repository.updateName(original.id, "Updated name");
+
+      expect(updated).toEqual({
+        ...original,
+        name: "Updated name",
+      });
+    });
+
+    it("returns null when updating an unknown id", () => {
+      expect(repository.updateName("missing", "Updated name")).toBeNull();
     });
   });
 
   describe("delete", () => {
     it("removes an existing project and reports true", () => {
-      const project = repository.create("Studio cards");
+      const created = repository.create("Studio cards");
 
-      expect(repository.delete(project.id)).toBe(true);
-      expect(repository.list()).toEqual([]);
+      expect(repository.delete(created.id)).toBe(true);
+      expect(repository.getById(created.id)).toBeNull();
     });
 
     it("reports false for an unknown id", () => {
-      expect(repository.delete("missing-id")).toBe(false);
+      expect(repository.delete("missing")).toBe(false);
     });
   });
 });

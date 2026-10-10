@@ -1,16 +1,44 @@
-import {
-  createRouter,
-  type RouterHistory,
-  type RouteRecordRaw,
-} from "vue-router";
+import { createRouter, createWebHistory } from "vue-router";
 
+import ProjectFormPage from "../pages/projects/ProjectFormPage.vue";
 import ProjectListPage from "../pages/projects/ProjectListPage.vue";
 
-export const routes: RouteRecordRaw[] = [
-  { path: "/", redirect: { name: "projects" } },
-  { path: "/projects", name: "projects", component: ProjectListPage },
-];
+export function createAppRouter(
+  history = createWebHistory(import.meta.env.BASE_URL),
+) {
+  return createRouter({
+    history,
 
-export function createAppRouter(history: RouterHistory) {
-  return createRouter({ history, routes });
+    routes: [
+      {
+        path: "/",
+        redirect: { name: "projects" },
+      },
+      {
+        path: "/projects",
+        name: "projects",
+        component: ProjectListPage,
+      },
+      {
+        path: "/projects/new",
+        name: "project-new",
+        component: ProjectFormPage,
+      },
+      {
+        path: "/projects/:id/edit",
+        name: "project-edit",
+        component: ProjectFormPage,
+      },
+      {
+        path: "/:pathMatch(.*)*",
+        redirect: "/projects",
+      },
+    ],
+
+    scrollBehavior() {
+      return { top: 0 };
+    },
+  });
 }
+
+export default createAppRouter();

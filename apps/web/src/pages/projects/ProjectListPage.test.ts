@@ -1,14 +1,11 @@
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { nextTick } from "vue";
+import { createMemoryHistory, createRouter } from "vue-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CardProject } from "../../api/types";
-import {
-  ApiError,
-  createProject,
-  deleteProject,
-  listProjects,
-} from "../../api/projectsApi";
+import { ApiError, deleteProject, listProjects } from "../../api/projectsApi";
+import ProjectFormPage from "./ProjectFormPage.vue";
 import ProjectListPage from "./ProjectListPage.vue";
 
 vi.mock("../../api/projectsApi", async (importOriginal) => {
@@ -18,12 +15,13 @@ vi.mock("../../api/projectsApi", async (importOriginal) => {
     ...actual,
     listProjects: vi.fn(),
     createProject: vi.fn(),
+    getProject: vi.fn(),
+    updateProject: vi.fn(),
     deleteProject: vi.fn(),
   };
 });
 
 const listProjectsMock = vi.mocked(listProjects);
-const createProjectMock = vi.mocked(createProject);
 const deleteProjectMock = vi.mocked(deleteProject);
 
 function project(overrides: Partial<CardProject> = {}): CardProject {
@@ -47,17 +45,50 @@ function buttonByText(wrapper: VueWrapper, label: string) {
   return match;
 }
 
+async function createTestRouter(initialPath = "/projects") {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      {
+        path: "/projects",
+        name: "projects",
+        component: ProjectListPage,
+      },
+      {
+        path: "/projects/new",
+        name: "project-new",
+        component: ProjectFormPage,
+      },
+      {
+        path: "/projects/:id/edit",
+        name: "project-edit",
+        component: ProjectFormPage,
+      },
+    ],
+  });
+
+  await router.push(initialPath);
+  await router.isReady();
+
+  return router;
+}
+
 async function mountPage() {
-  const wrapper = mount(ProjectListPage);
+  const router = await createTestRouter();
+
+  const wrapper = mount(ProjectListPage, {
+    global: {
+      plugins: [router],
+    },
+  });
 
   await flushPromises();
 
-  return wrapper;
+  return { wrapper, router };
 }
 
 beforeEach(() => {
   listProjectsMock.mockReset();
-  createProjectMock.mockReset();
   deleteProjectMock.mockReset();
 
   listProjectsMock.mockResolvedValue({
@@ -71,6 +102,8 @@ afterEach(() => {
 
 describe("ProjectListPage", () => {
   it("shows the loading state only after a short delay", async () => {
+    const router = await createTestRouter();
+
     vi.useFakeTimers();
 
     let wrapper: VueWrapper | undefined;
@@ -84,7 +117,11 @@ describe("ProjectListPage", () => {
         }),
       );
 
-      wrapper = mount(ProjectListPage);
+      wrapper = mount(ProjectListPage, {
+        global: {
+          plugins: [router],
+        },
+      });
 
       await vi.advanceTimersByTimeAsync(0);
       await nextTick();
@@ -101,7 +138,7 @@ describe("ProjectListPage", () => {
       });
 
       await vi.advanceTimersByTimeAsync(0);
-      await nextTick();
+      await flushPromises();
 
       expect(wrapper.text()).toContain("Studio cards");
       expect(wrapper.text()).not.toContain("Loading projects…");
@@ -112,14 +149,14 @@ describe("ProjectListPage", () => {
   });
 
   it("never shows the loading skeleton when projects arrive quickly", async () => {
-    const wrapper = await mountPage();
+    const { wrapper } = await mountPage();
 
     expect(wrapper.find(".skeleton-list").exists()).toBe(false);
     expect(wrapper.text()).toContain("No projects yet.");
   });
 
   it("shows the empty state when there are no projects", async () => {
-    const wrapper = await mountPage();
+    const { wrapper } = await mountPage();
 
     expect(wrapper.text()).toContain("No projects yet.");
   });
@@ -135,10 +172,41 @@ describe("ProjectListPage", () => {
       ],
     });
 
-    const wrapper = await mountPage();
+    const { wrapper } = await mountPage();
 
     expect(wrapper.text()).toContain("Café cards");
     expect(wrapper.text()).toContain("Photo studio");
+  });
+
+  it("links to the new-project form", async () => {
+    const { wrapper, router } = await mountPage();
+
+    const link = wrapper.get('a[href="/projects/new"]');
+
+    expect(link.text()).toBe("Create project");
+
+    await link.trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("project-new");
+  });
+
+  it("links each project to its edit form", async () => {
+    listProjectsMock.mockResolvedValue({
+      projects: [project()],
+    });
+
+    const { wrapper, router } = await mountPage();
+
+    const link = wrapper.get('a[href="/projects/p1/edit"]');
+
+    expect(link.text()).toBe("Edit");
+
+    await link.trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("project-edit");
+    expect(router.currentRoute.value.params.id).toBe("p1");
   });
 
   it("shows an error with a retry that reloads the list", async () => {
@@ -150,7 +218,7 @@ describe("ProjectListPage", () => {
       ),
     );
 
-    const wrapper = await mountPage();
+    const { wrapper } = await mountPage();
 
     expect(wrapper.text()).toContain("Could not load your projects.");
 
@@ -165,113 +233,12 @@ describe("ProjectListPage", () => {
     expect(wrapper.text()).toContain("Studio cards");
   });
 
-  it("creates a project with the trimmed name and prepends it to the list", async () => {
-    const wrapper = await mountPage();
-
-    createProjectMock.mockResolvedValueOnce(
-      project({
-        id: "new-1",
-        name: "Rounded corners",
-      }),
-    );
-
-    await wrapper.find("#project-name").setValue("  Rounded corners  ");
-
-    await wrapper.find("form").trigger("submit");
-    await flushPromises();
-
-    expect(createProjectMock).toHaveBeenCalledExactlyOnceWith(
-      "Rounded corners",
-    );
-
-    expect(wrapper.text()).toContain("Rounded corners");
-
-    expect(
-      wrapper.findAll(".project-list li").map((item) => item.text()),
-    ).toHaveLength(1);
-
-    expect(
-      (wrapper.find("#project-name").element as HTMLInputElement).value,
-    ).toBe("");
-
-    expect(wrapper.text()).toContain("Created “Rounded corners”.");
-  });
-
-  it("disables the create button while submitting", async () => {
-    const wrapper = await mountPage();
-
-    let resolveCreate: (value: CardProject) => void = () => {};
-
-    createProjectMock.mockReturnValue(
-      new Promise<CardProject>((resolve) => {
-        resolveCreate = resolve;
-      }),
-    );
-
-    await wrapper.find("#project-name").setValue("Slow project");
-
-    await wrapper.find("form").trigger("submit");
-
-    const submittingButton = buttonByText(wrapper, "Creating…");
-
-    expect(submittingButton.attributes("disabled")).toBeDefined();
-
-    resolveCreate(
-      project({
-        id: "slow",
-        name: "Slow project",
-      }),
-    );
-
-    await flushPromises();
-
-    expect(
-      buttonByText(wrapper, "Create project").attributes("disabled"),
-    ).toBeUndefined();
-  });
-
-  it("rejects an empty name without calling the API", async () => {
-    const wrapper = await mountPage();
-
-    await wrapper.find("#project-name").setValue("   ");
-
-    await wrapper.find("form").trigger("submit");
-    await flushPromises();
-
-    expect(createProjectMock).not.toHaveBeenCalled();
-
-    expect(wrapper.find('[role="status"]').text()).toContain(
-      "Enter a project name.",
-    );
-  });
-
-  it("shows the server validation message on a 400 response", async () => {
-    const wrapper = await mountPage();
-
-    createProjectMock.mockRejectedValueOnce(
-      new ApiError(
-        "INVALID_NAME",
-        "CardProject names must be 80 characters or fewer.",
-        400,
-      ),
-    );
-
-    await wrapper.find("#project-name").setValue("x".repeat(81));
-
-    await wrapper.find("form").trigger("submit");
-    await flushPromises();
-
-    expect(wrapper.text()).toContain(
-      "CardProject names must be 80 characters or fewer.",
-    );
-  });
-
   it("deletes a project after a confirmation step", async () => {
     listProjectsMock.mockResolvedValue({
       projects: [project()],
     });
 
-    const wrapper = await mountPage();
+    const { wrapper } = await mountPage();
 
     await buttonByText(wrapper, "Delete").trigger("click");
 
@@ -284,7 +251,6 @@ describe("ProjectListPage", () => {
     await flushPromises();
 
     expect(deleteProjectMock).toHaveBeenCalledExactlyOnceWith("p1");
-
     expect(wrapper.text()).toContain("No projects yet.");
   });
 
@@ -293,7 +259,7 @@ describe("ProjectListPage", () => {
       projects: [project()],
     });
 
-    const wrapper = await mountPage();
+    const { wrapper } = await mountPage();
 
     await buttonByText(wrapper, "Delete").trigger("click");
     await buttonByText(wrapper, "Cancel").trigger("click");
@@ -308,7 +274,7 @@ describe("ProjectListPage", () => {
       projects: [project()],
     });
 
-    const wrapper = await mountPage();
+    const { wrapper } = await mountPage();
 
     deleteProjectMock.mockRejectedValueOnce(
       new ApiError("NOT_FOUND", "Project not found.", 404),
