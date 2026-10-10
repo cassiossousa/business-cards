@@ -232,7 +232,7 @@ onMounted(() => {
 <style scoped>
 .page-heading {
   margin: 0 0 var(--space-6);
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
@@ -251,7 +251,7 @@ onMounted(() => {
 
 .card-title {
   margin: 0 0 var(--space-4);
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 600;
 }
 
@@ -265,21 +265,21 @@ onMounted(() => {
 }
 
 .create-form .field {
-  flex: 1 1 240px;
+  flex: 1 1 15rem;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
 .create-form label {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--gray-900);
 }
 
 .form-feedback {
   margin: var(--space-3) 0 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   min-height: 0;
 }
 
@@ -296,7 +296,7 @@ onMounted(() => {
 }
 
 .input {
-  height: 40px;
+  height: 2.5rem;
   padding: 0 var(--space-3);
   font: inherit;
   color: var(--gray-900);
@@ -350,7 +350,7 @@ onMounted(() => {
 .project-created {
   display: block;
   color: var(--gray-500);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .project-actions {
@@ -375,7 +375,7 @@ onMounted(() => {
 }
 
 .skeleton-list li {
-  height: 44px;
+  height: 2.75rem;
   border-radius: var(--radius-sm);
   background: var(--gray-100);
   animation: skeleton-pulse 1.4s ease-in-out infinite;

@@ -50,7 +50,7 @@ function onThemeChange(event: Event) {
 <style scoped>
 .container {
   width: 100%;
-  max-width: 720px;
+  max-width: 45rem;
   margin-inline: auto;
   padding-inline: var(--space-6);
 }
@@ -76,7 +76,7 @@ function onThemeChange(event: Event) {
 
 .app-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
@@ -84,7 +84,7 @@ function onThemeChange(event: Event) {
 .app-subtitle {
   margin: 0;
   color: var(--gray-500);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .theme-control {
@@ -96,14 +96,14 @@ function onThemeChange(event: Event) {
 
 .theme-label {
   color: var(--gray-500);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .theme-select {
-  height: 32px;
+  height: 2rem;
   padding: 0 var(--space-2);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--gray-900);
   background: var(--gray-100);
   border: 1px solid var(--gray-200);

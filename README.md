@@ -2,7 +2,9 @@
 
 Design and print business cards. The current milestone is a working full-stack
 foundation: create, list, and delete named card projects, with a Vue frontend,
-a Fastify API, and SQLite persistence.
+a Fastify API, and SQLite persistence. The UI offers light, dark, and system
+color themes in the header; the choice persists locally and the default
+follows your OS setting.
 
 ## Prerequisites
 
