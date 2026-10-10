@@ -1,8 +1,8 @@
 import { createMemoryHistory } from "vue-router";
 import { describe, expect, it } from "vitest";
 
-import ProjectFormPage from "../pages/projects/ProjectFormPage.vue";
-import ProjectListPage from "../pages/projects/ProjectListPage.vue";
+import ProjectFormPage from "../pages/projects/form/ProjectFormPage.vue";
+import ProjectListPage from "../pages/projects/list/ProjectListPage.vue";
 import { createAppRouter } from "./index";
 
 describe("router", () => {

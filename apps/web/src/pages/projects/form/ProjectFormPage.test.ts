@@ -3,21 +3,22 @@ import { defineComponent, h } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { CardProject } from "../../api/types";
+import type { CardProject } from "../../../api/types";
 import {
   ApiError,
   createProject,
   getProject,
   updateProject,
-} from "../../api/projectsApi";
+} from "../../../api/projectsApi";
 import ProjectFormPage from "./ProjectFormPage.vue";
 
 const ProjectsStub = defineComponent({
   render: () => h("div", "Projects"),
 });
 
-vi.mock("../../api/projectsApi", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../api/projectsApi")>();
+vi.mock("../../../api/projectsApi", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../api/projectsApi")>();
 
   return {
     ...actual,
@@ -120,12 +121,10 @@ describe("ProjectFormPage", () => {
     const { wrapper } = await mountForm();
 
     await wrapper.get("#project-name").setValue("   ");
-
     await wrapper.get("form").trigger("submit");
 
     expect(createProjectMock).not.toHaveBeenCalled();
-
-    expect(wrapper.find('[role="alert"]').text()).toContain(
+    expect(wrapper.get('[role="alert"]').text()).toContain(
       "Enter a project name.",
     );
   });
@@ -138,8 +137,7 @@ describe("ProjectFormPage", () => {
     await wrapper.get("form").trigger("submit");
 
     expect(createProjectMock).not.toHaveBeenCalled();
-
-    expect(wrapper.find('[role="alert"]').text()).toContain(
+    expect(wrapper.get('[role="alert"]').text()).toContain(
       "80 characters or fewer",
     );
   });
@@ -152,11 +150,10 @@ describe("ProjectFormPage", () => {
     const { wrapper } = await mountForm();
 
     await wrapper.get("#project-name").setValue("Existing name");
-
     await wrapper.get("form").trigger("submit");
     await flushPromises();
 
-    expect(wrapper.find('[role="alert"]').text()).toContain(
+    expect(wrapper.get('[role="alert"]').text()).toContain(
       "Name is already in use.",
     );
   });
@@ -178,7 +175,6 @@ describe("ProjectFormPage", () => {
 
   it("updates the existing project with a trimmed name", async () => {
     getProjectMock.mockResolvedValue(project());
-
     updateProjectMock.mockResolvedValue(project({ name: "Studio redesign" }));
 
     const { wrapper, router } = await mountForm("/projects/p1/edit");
@@ -207,13 +203,10 @@ describe("ProjectFormPage", () => {
     const { wrapper } = await mountForm("/projects/p1/edit");
 
     await wrapper.get("#project-name").setValue("New name");
-
     await wrapper.get("form").trigger("submit");
     await flushPromises();
 
-    expect(wrapper.find('[role="alert"]').text()).toContain(
-      "Name is too long.",
-    );
+    expect(wrapper.get('[role="alert"]').text()).toContain("Name is too long.");
   });
 
   it("shows an error when an existing project cannot be loaded", async () => {

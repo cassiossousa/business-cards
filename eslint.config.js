@@ -93,4 +93,29 @@ export default tseslint.config(
       "import-x/namespace": "off",
     },
   },
+  {
+    files: ["**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,vue}"],
+    rules: {
+      "max-lines": [
+        "error",
+        {
+          max: 200,
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "**/*.{test,spec}.{js,jsx,mjs,cjs,ts,tsx,mts,cts,vue}",
+      "**/{test,tests}/**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,vue}",
+    ],
+    rules: {
+      "max-lines": [
+        "error",
+        {
+          max: 400,
+        },
+      ],
+    },
+  },
 );

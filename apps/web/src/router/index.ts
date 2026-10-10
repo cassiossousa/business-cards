@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
-import ProjectFormPage from "../pages/projects/ProjectFormPage.vue";
-import ProjectListPage from "../pages/projects/ProjectListPage.vue";
+import ProjectFormPage from "../pages/projects/form/ProjectFormPage.vue";
+import ProjectListPage from "../pages/projects/list/ProjectListPage.vue";
 
 export function createAppRouter(
   history = createWebHistory(import.meta.env.BASE_URL),

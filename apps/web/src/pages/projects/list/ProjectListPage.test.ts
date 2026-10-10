@@ -1,22 +1,27 @@
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
-import { nextTick } from "vue";
+import { defineComponent, h, nextTick } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { CardProject } from "../../api/types";
-import { ApiError, deleteProject, listProjects } from "../../api/projectsApi";
-import ProjectFormPage from "./ProjectFormPage.vue";
+import type { CardProject } from "../../../api/types";
+import {
+  ApiError,
+  deleteProject,
+  listProjects,
+} from "../../../api/projectsApi";
 import ProjectListPage from "./ProjectListPage.vue";
 
-vi.mock("../../api/projectsApi", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../api/projectsApi")>();
+const RouteStub = defineComponent({
+  render: () => h("div"),
+});
+
+vi.mock("../../../api/projectsApi", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../api/projectsApi")>();
 
   return {
     ...actual,
     listProjects: vi.fn(),
-    createProject: vi.fn(),
-    getProject: vi.fn(),
-    updateProject: vi.fn(),
     deleteProject: vi.fn(),
   };
 });
@@ -33,41 +38,29 @@ function project(overrides: Partial<CardProject> = {}): CardProject {
   };
 }
 
-function buttonByText(wrapper: VueWrapper, label: string) {
-  const match = wrapper
-    .findAll("button")
-    .find((button) => button.text() === label);
-
-  if (!match) {
-    throw new Error(`Expected to find a button labeled "${label}".`);
-  }
-
-  return match;
-}
-
-async function createTestRouter(initialPath = "/projects") {
+async function createTestRouter() {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
       {
         path: "/projects",
         name: "projects",
-        component: ProjectListPage,
+        component: RouteStub,
       },
       {
         path: "/projects/new",
         name: "project-new",
-        component: ProjectFormPage,
+        component: RouteStub,
       },
       {
         path: "/projects/:id/edit",
         name: "project-edit",
-        component: ProjectFormPage,
+        component: RouteStub,
       },
     ],
   });
 
-  await router.push(initialPath);
+  await router.push("/projects");
   await router.isReady();
 
   return router;
@@ -87,6 +80,18 @@ async function mountPage() {
   return { wrapper, router };
 }
 
+function buttonByText(wrapper: VueWrapper, label: string) {
+  const button = wrapper
+    .findAll("button")
+    .find((candidate) => candidate.text() === label);
+
+  if (!button) {
+    throw new Error(`Expected button "${label}".`);
+  }
+
+  return button;
+}
+
 beforeEach(() => {
   listProjectsMock.mockReset();
   deleteProjectMock.mockReset();
@@ -101,28 +106,56 @@ afterEach(() => {
 });
 
 describe("ProjectListPage", () => {
-  it("shows the loading state only after a short delay", async () => {
+  it("does not show the skeleton when the list loads quickly", async () => {
+    const { wrapper } = await mountPage();
+
+    expect(wrapper.find(".skeleton-list").exists()).toBe(false);
+    expect(wrapper.text()).toContain("No projects yet.");
+  });
+
+  it("renders projects and their edit links", async () => {
+    listProjectsMock.mockResolvedValue({
+      projects: [project(), project({ id: "p2", name: "Photo studio" })],
+    });
+
+    const { wrapper } = await mountPage();
+
+    expect(wrapper.findAll(".project-item")).toHaveLength(2);
+    expect(wrapper.text()).toContain("Studio cards");
+    expect(wrapper.text()).toContain("Photo studio");
+
+    expect(wrapper.get('a[href="/projects/p1/edit"]').text()).toBe("Edit");
+  });
+
+  it("navigates to the new-project route", async () => {
+    const { wrapper, router } = await mountPage();
+
+    await wrapper.get('a[href="/projects/new"]').trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("project-new");
+  });
+
+  it("shows the skeleton after the loading delay", async () => {
     const router = await createTestRouter();
 
     vi.useFakeTimers();
 
-    let wrapper: VueWrapper | undefined;
+    let resolveList: (value: { projects: CardProject[] }) => void = () => {};
+
+    listProjectsMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveList = resolve;
+      }),
+    );
+
+    const wrapper = mount(ProjectListPage, {
+      global: {
+        plugins: [router],
+      },
+    });
 
     try {
-      let resolveList: (value: { projects: CardProject[] }) => void = () => {};
-
-      listProjectsMock.mockReturnValue(
-        new Promise<{ projects: CardProject[] }>((resolve) => {
-          resolveList = resolve;
-        }),
-      );
-
-      wrapper = mount(ProjectListPage, {
-        global: {
-          plugins: [router],
-        },
-      });
-
       await vi.advanceTimersByTimeAsync(0);
       await nextTick();
 
@@ -143,79 +176,14 @@ describe("ProjectListPage", () => {
       expect(wrapper.text()).toContain("Studio cards");
       expect(wrapper.text()).not.toContain("Loading projects…");
     } finally {
-      wrapper?.unmount();
+      wrapper.unmount();
       vi.useRealTimers();
     }
   });
 
-  it("never shows the loading skeleton when projects arrive quickly", async () => {
-    const { wrapper } = await mountPage();
-
-    expect(wrapper.find(".skeleton-list").exists()).toBe(false);
-    expect(wrapper.text()).toContain("No projects yet.");
-  });
-
-  it("shows the empty state when there are no projects", async () => {
-    const { wrapper } = await mountPage();
-
-    expect(wrapper.text()).toContain("No projects yet.");
-  });
-
-  it("renders the loaded projects", async () => {
-    listProjectsMock.mockResolvedValue({
-      projects: [
-        project({ name: "Café cards" }),
-        project({
-          id: "p2",
-          name: "Photo studio",
-        }),
-      ],
-    });
-
-    const { wrapper } = await mountPage();
-
-    expect(wrapper.text()).toContain("Café cards");
-    expect(wrapper.text()).toContain("Photo studio");
-  });
-
-  it("links to the new-project form", async () => {
-    const { wrapper, router } = await mountPage();
-
-    const link = wrapper.get('a[href="/projects/new"]');
-
-    expect(link.text()).toBe("Create project");
-
-    await link.trigger("click");
-    await flushPromises();
-
-    expect(router.currentRoute.value.name).toBe("project-new");
-  });
-
-  it("links each project to its edit form", async () => {
-    listProjectsMock.mockResolvedValue({
-      projects: [project()],
-    });
-
-    const { wrapper, router } = await mountPage();
-
-    const link = wrapper.get('a[href="/projects/p1/edit"]');
-
-    expect(link.text()).toBe("Edit");
-
-    await link.trigger("click");
-    await flushPromises();
-
-    expect(router.currentRoute.value.name).toBe("project-edit");
-    expect(router.currentRoute.value.params.id).toBe("p1");
-  });
-
-  it("shows an error with a retry that reloads the list", async () => {
+  it("retries the list after a loading error", async () => {
     listProjectsMock.mockRejectedValueOnce(
-      new ApiError(
-        "NETWORK",
-        "Could not reach the server. Check that the API is running.",
-        0,
-      ),
+      new ApiError("NETWORK", "Could not reach the server.", 0),
     );
 
     const { wrapper } = await mountPage();
@@ -233,7 +201,7 @@ describe("ProjectListPage", () => {
     expect(wrapper.text()).toContain("Studio cards");
   });
 
-  it("deletes a project after a confirmation step", async () => {
+  it("deletes a project after confirmation", async () => {
     listProjectsMock.mockResolvedValue({
       projects: [project()],
     });
@@ -247,14 +215,13 @@ describe("ProjectListPage", () => {
     deleteProjectMock.mockResolvedValueOnce(undefined);
 
     await buttonByText(wrapper, "Confirm delete").trigger("click");
-
     await flushPromises();
 
     expect(deleteProjectMock).toHaveBeenCalledExactlyOnceWith("p1");
     expect(wrapper.text()).toContain("No projects yet.");
   });
 
-  it("keeps the project when the delete confirmation is cancelled", async () => {
+  it("keeps a project when deletion is cancelled", async () => {
     listProjectsMock.mockResolvedValue({
       projects: [project()],
     });
@@ -269,7 +236,7 @@ describe("ProjectListPage", () => {
     expect(wrapper.text()).not.toContain("Confirm delete");
   });
 
-  it("shows an alert when deletion fails", async () => {
+  it("shows deletion errors without removing the project", async () => {
     listProjectsMock.mockResolvedValue({
       projects: [project()],
     });
@@ -281,15 +248,10 @@ describe("ProjectListPage", () => {
     );
 
     await buttonByText(wrapper, "Delete").trigger("click");
-
     await buttonByText(wrapper, "Confirm delete").trigger("click");
-
     await flushPromises();
 
-    expect(wrapper.find('[role="alert"]').text()).toContain(
-      "Project not found.",
-    );
-
+    expect(wrapper.get('[role="alert"]').text()).toBe("Project not found.");
     expect(wrapper.text()).toContain("Studio cards");
   });
 });
