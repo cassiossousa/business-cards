@@ -1,10 +1,10 @@
 :root {
   /*
-   * Palette tokens use hue + strength. --white is the surface color and
-   * doubles as readable text on colored fills; dark mode flips its value
-   * so both roles keep working. Neutrals: 100 = page background, 200 =
-   * border, 500 = muted text, 900 = primary text. Hue colors use
-   * 500 = resting, 600 = hover.
+   * Two token layers. The raw palette uses hue + strength and is the
+   * same in every theme — dark mode redefines only the semantic roles
+   * below. Components consume roles, never raw hues. Neutrals: 100 =
+   * subtle fill and page background, 200 = border, 500 = muted text,
+   * 900 = primary text. Hue colors use 500 = resting, 600 = hover.
    */
   --white: #ffffff;
   --gray-100: #f4f4f6;
@@ -15,6 +15,22 @@
   --violet-600: #4c30d8;
   --red-500: #b3261e;
   --red-600: #9a1f19;
+
+  /*
+   * Semantic roles: page background, surfaces, text tiers, accent, and
+   * danger. --text-on-fill is readable text on --primary/--danger fills.
+   */
+  --page-bg: var(--gray-100);
+  --surface: var(--white);
+  --surface-subtle: var(--gray-100);
+  --border: var(--gray-200);
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-500);
+  --text-on-fill: var(--white);
+  --primary: var(--violet-500);
+  --primary-hover: var(--violet-600);
+  --danger: var(--red-500);
+  --danger-hover: var(--red-600);
 
   --radius-sm: 0.375rem;
   --radius-md: 0.625rem;
@@ -44,15 +60,17 @@
  * control, so this attribute — not a media query — decides the theme.
  */
 :root[data-theme="dark"] {
-  --white: #1e1e26;
-  --gray-100: #141419;
-  --gray-200: #34343f;
-  --gray-500: #9d9daa;
-  --gray-900: #ececf1;
-  --violet-500: #8b74ff;
-  --violet-600: #a08fff;
-  --red-500: #f2a49f;
-  --red-600: #f6bcb8;
+  --page-bg: #141419;
+  --surface: #1e1e26;
+  --surface-subtle: #141419;
+  --border: #34343f;
+  --text-primary: #ececf1;
+  --text-secondary: #9d9daa;
+  --text-on-fill: #1e1e26;
+  --primary: #8b74ff;
+  --primary-hover: #a08fff;
+  --danger: #f2a49f;
+  --danger-hover: #f6bcb8;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
 
   color-scheme: dark;
@@ -67,7 +85,7 @@ body {
   font-family: var(--font-sans);
   font-size: 1rem;
   line-height: 1.5;
-  color: var(--gray-900);
-  background: var(--gray-100);
+  color: var(--text-primary);
+  background: var(--page-bg);
   -webkit-font-smoothing: antialiased;
 }

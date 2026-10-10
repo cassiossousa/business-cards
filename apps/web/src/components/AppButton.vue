@@ -24,7 +24,7 @@ withDefaults(
 
 <style scoped>
 .btn {
-  height: var(--space-10);
+  height: 2.5rem;
   padding: 0 var(--space-4);
   font: inherit;
   font-weight: 500;
@@ -34,7 +34,7 @@ withDefaults(
 }
 
 .btn:focus-visible {
-  outline: 2px solid var(--violet-500);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -44,41 +44,41 @@ withDefaults(
 }
 
 .btn-primary {
-  color: var(--white);
-  background: var(--violet-500);
+  color: var(--text-on-fill);
+  background: var(--primary);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--violet-600);
+  background: var(--primary-hover);
 }
 
 .btn-secondary {
-  color: var(--gray-900);
+  color: var(--text-primary);
   background: transparent;
-  border-color: var(--gray-200);
+  border-color: var(--border);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--gray-100);
+  background: var(--surface-subtle);
 }
 
 .btn-danger {
-  color: var(--red-500);
+  color: var(--danger);
   background: transparent;
-  border-color: var(--gray-200);
+  border-color: var(--border);
 }
 
 .btn-danger:hover:not(:disabled) {
-  color: var(--red-600);
-  border-color: var(--red-500);
+  color: var(--danger-hover);
+  border-color: var(--danger);
 }
 
 .btn-danger-solid {
-  color: var(--white);
-  background: var(--red-500);
+  color: var(--text-on-fill);
+  background: var(--danger);
 }
 
 .btn-danger-solid:hover:not(:disabled) {
-  background: var(--red-600);
+  background: var(--danger-hover);
 }
 </style>

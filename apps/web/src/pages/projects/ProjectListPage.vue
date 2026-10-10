@@ -9,6 +9,7 @@ import {
   listProjects,
 } from "../../api/projectsApi";
 import AppButton from "../../components/AppButton.vue";
+import AppInput from "../../components/AppInput.vue";
 
 type LoadState = "loading" | "error" | "ready";
 
@@ -140,12 +141,10 @@ onMounted(() => {
     <form class="create-form" @submit.prevent="submitCreate">
       <div class="field">
         <label for="project-name">Project name</label>
-        <input
+        <AppInput
           id="project-name"
           v-model="newName"
-          class="input"
           name="project-name"
-          type="text"
           placeholder="e.g. Studio cards"
           :disabled="isSubmitting"
           autocomplete="off"
@@ -238,8 +237,8 @@ onMounted(() => {
 }
 
 .card {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: var(--space-6);
   box-shadow: var(--shadow-card);
@@ -258,7 +257,7 @@ onMounted(() => {
 .create-form {
   display: flex;
   gap: var(--space-3);
-  /* The input is the field's last child, so bottom-alignment puts the
+  /* AppInput is the field's last child, so bottom-alignment puts the
      button beside the input rather than beside the label above it. */
   align-items: flex-end;
   flex-wrap: wrap;
@@ -274,7 +273,7 @@ onMounted(() => {
 .create-form label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--gray-900);
+  color: var(--text-primary);
 }
 
 .form-feedback {
@@ -288,31 +287,11 @@ onMounted(() => {
 }
 
 .form-feedback[data-tone="error"] {
-  color: var(--red-500);
+  color: var(--danger);
 }
 
 .form-feedback[data-tone="success"] {
-  color: var(--gray-500);
-}
-
-.input {
-  height: 2.5rem;
-  padding: 0 var(--space-3);
-  font: inherit;
-  color: var(--gray-900);
-  background: var(--gray-100);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm);
-}
-
-.input:focus-visible {
-  outline: 2px solid var(--violet-500);
-  outline-offset: 2px;
-}
-
-.input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  color: var(--text-secondary);
 }
 
 .project-list {
@@ -329,7 +308,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
 
@@ -349,7 +328,7 @@ onMounted(() => {
 
 .project-created {
   display: block;
-  color: var(--gray-500);
+  color: var(--text-secondary);
   font-size: 0.8125rem;
 }
 
@@ -362,7 +341,7 @@ onMounted(() => {
 .state-panel {
   padding: var(--space-10) var(--space-6);
   text-align: center;
-  color: var(--gray-500);
+  color: var(--text-secondary);
 }
 
 .skeleton-list {
@@ -377,7 +356,7 @@ onMounted(() => {
 .skeleton-list li {
   height: 2.75rem;
   border-radius: var(--radius-sm);
-  background: var(--gray-100);
+  background: var(--surface-subtle);
   animation: skeleton-pulse 1.4s ease-in-out infinite;
 }
 
@@ -400,6 +379,16 @@ onMounted(() => {
 @media (max-width: 560px) {
   .card {
     padding: var(--space-4);
+  }
+
+  .create-form .field {
+    flex-basis: 100%;
+  }
+
+  /* AppButton renders the button element, so reach past the child
+     component's scoped boundary to make its buttons fill the row. */
+  .create-form :deep(button) {
+    flex: 1;
   }
 
   .project-actions {

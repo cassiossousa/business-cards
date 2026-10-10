@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
+import AppSelect from "./components/AppSelect.vue";
 import ProjectListPage from "./pages/projects/ProjectListPage.vue";
 import {
   getThemePreference,
@@ -10,9 +11,8 @@ import {
 
 const themePreference = ref<ThemePreference>(getThemePreference());
 
-function onThemeChange(event: Event) {
-  const preference = (event.currentTarget as HTMLSelectElement)
-    .value as ThemePreference;
+function onThemeChange(value: string) {
+  const preference = value as ThemePreference;
   themePreference.value = preference;
   setThemePreference(preference);
 }
@@ -27,16 +27,15 @@ function onThemeChange(event: Event) {
       </div>
       <div class="theme-control">
         <label class="theme-label" for="theme-select">Theme</label>
-        <select
+        <AppSelect
           id="theme-select"
-          class="theme-select"
-          :value="themePreference"
-          @change="onThemeChange"
+          :model-value="themePreference"
+          @update:model-value="onThemeChange"
         >
           <option value="light">Light</option>
           <option value="dark">Dark</option>
           <option value="system">System</option>
-        </select>
+        </AppSelect>
       </div>
     </div>
   </header>
@@ -56,8 +55,8 @@ function onThemeChange(event: Event) {
 }
 
 .app-header {
-  border-bottom: 1px solid var(--gray-200);
-  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .app-header .container {
@@ -83,36 +82,20 @@ function onThemeChange(event: Event) {
 
 .app-subtitle {
   margin: 0;
-  color: var(--gray-500);
+  color: var(--text-secondary);
   font-size: 0.875rem;
 }
 
 .theme-control {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-2);
   margin-left: auto;
 }
 
 .theme-label {
-  color: var(--gray-500);
+  color: var(--text-secondary);
   font-size: 0.875rem;
-}
-
-.theme-select {
-  height: 2rem;
-  padding: 0 var(--space-2);
-  font: inherit;
-  font-size: 0.875rem;
-  color: var(--gray-900);
-  background: var(--gray-100);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm);
-}
-
-.theme-select:focus-visible {
-  outline: 2px solid var(--violet-500);
-  outline-offset: 2px;
 }
 
 .app-main {
