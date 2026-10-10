@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 
 import type { CardProject } from "../../api/types";
 import {
@@ -18,9 +18,13 @@ interface FormFeedback {
   text: string;
 }
 
+const LOADING_DELAY_MS = 150;
+
 const projects = ref<CardProject[]>([]);
 const loadState = ref<LoadState>("loading");
-const loadFailed = ref(false);
+const showLoadingState = ref(false);
+
+let loadingTimer: ReturnType<typeof setTimeout> | undefined;
 
 const newName = ref("");
 const isSubmitting = ref(false);
@@ -30,17 +34,37 @@ const pendingDeleteId = ref<string | null>(null);
 const deletingId = ref<string | null>(null);
 const deleteFeedback = ref<FormFeedback | null>(null);
 
+function clearLoadingTimer(): void {
+  if (loadingTimer !== undefined) {
+    clearTimeout(loadingTimer);
+    loadingTimer = undefined;
+  }
+}
+
 async function loadProjects(): Promise<void> {
+  clearLoadingTimer();
+
+  showLoadingState.value = false;
   loadState.value = "loading";
-  loadFailed.value = false;
+
+  loadingTimer = setTimeout(() => {
+    loadingTimer = undefined;
+
+    if (loadState.value === "loading") {
+      showLoadingState.value = true;
+    }
+  }, LOADING_DELAY_MS);
 
   try {
     const response = await listProjects();
+
     projects.value = response.projects;
     loadState.value = "ready";
   } catch {
-    loadFailed.value = true;
     loadState.value = "error";
+  } finally {
+    clearLoadingTimer();
+    showLoadingState.value = false;
   }
 }
 
@@ -48,7 +72,10 @@ async function submitCreate(): Promise<void> {
   const name = newName.value.trim();
 
   if (!name) {
-    formFeedback.value = { tone: "error", text: "Enter a project name." };
+    formFeedback.value = {
+      tone: "error",
+      text: "Enter a project name.",
+    };
     return;
   }
 
@@ -61,8 +88,10 @@ async function submitCreate(): Promise<void> {
 
   try {
     const project = await createProject(name);
+
     projects.value = [project, ...projects.value];
     newName.value = "";
+
     formFeedback.value = {
       tone: "success",
       text: `Created “${project.name}”.`,
@@ -92,6 +121,7 @@ function cancelDelete(): void {
 
 async function confirmDelete(): Promise<void> {
   const id = pendingDeleteId.value;
+
   if (id === null || deletingId.value !== null) {
     return;
   }
@@ -100,7 +130,9 @@ async function confirmDelete(): Promise<void> {
 
   try {
     await deleteProject(id);
+
     projects.value = projects.value.filter((project) => project.id !== id);
+
     pendingDeleteId.value = null;
     deleteFeedback.value = null;
   } catch (error) {
@@ -118,9 +150,11 @@ async function confirmDelete(): Promise<void> {
 
 function formatDate(isoDate: string): string {
   const date = new Date(isoDate);
+
   if (Number.isNaN(date.getTime())) {
     return "";
   }
+
   return date.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
@@ -131,6 +165,10 @@ function formatDate(isoDate: string): string {
 onMounted(() => {
   void loadProjects();
 });
+
+onUnmounted(() => {
+  clearLoadingTimer();
+});
 </script>
 
 <template>
@@ -138,9 +176,11 @@ onMounted(() => {
 
   <section class="card" aria-labelledby="create-project-title">
     <h3 id="create-project-title" class="card-title">Start a new project</h3>
+
     <form class="create-form" @submit.prevent="submitCreate">
       <div class="field">
         <label for="project-name">Project name</label>
+
         <AppInput
           id="project-name"
           v-model="newName"
@@ -150,10 +190,12 @@ onMounted(() => {
           autocomplete="off"
         />
       </div>
+
       <AppButton variant="primary" type="submit" :disabled="isSubmitting">
         {{ isSubmitting ? "Creating…" : "Create project" }}
       </AppButton>
     </form>
+
     <p
       v-if="formFeedback"
       class="form-feedback"
@@ -177,15 +219,19 @@ onMounted(() => {
     </p>
 
     <div v-if="loadState === 'loading'" aria-busy="true">
-      <ul class="skeleton-list" aria-hidden="true">
-        <li v-for="index in 3" :key="index"></li>
-      </ul>
-      <p class="state-panel" role="status">Loading projects…</p>
+      <template v-if="showLoadingState">
+        <ul class="skeleton-list" aria-hidden="true">
+          <li v-for="index in 3" :key="index"></li>
+        </ul>
+
+        <p class="state-panel" role="status">Loading projects…</p>
+      </template>
     </div>
 
     <div v-else-if="loadState === 'error'" class="state-panel">
       <p>Could not load your projects.</p>
-      <AppButton variant="secondary" @click="loadProjects">
+
+      <AppButton variant="secondary" type="button" @click="loadProjects">
         Try again
       </AppButton>
     </div>
@@ -197,26 +243,38 @@ onMounted(() => {
     <ul v-else class="project-list">
       <li v-for="project in projects" :key="project.id">
         <div>
-          <span class="project-name">{{ project.name }}</span>
-          <span class="project-created"
-            >Created {{ formatDate(project.createdAt) }}</span
-          >
+          <span class="project-name">
+            {{ project.name }}
+          </span>
+
+          <span class="project-created">
+            Created {{ formatDate(project.createdAt) }}
+          </span>
         </div>
+
         <div v-if="pendingDeleteId !== project.id" class="project-actions">
-          <AppButton variant="danger" @click="requestDelete(project)">
+          <AppButton
+            variant="danger"
+            type="button"
+            @click="requestDelete(project)"
+          >
             Delete
           </AppButton>
         </div>
+
         <div v-else class="project-actions">
           <AppButton
             variant="danger-solid"
+            type="button"
             :disabled="deletingId === project.id"
             @click="confirmDelete"
           >
             {{ deletingId === project.id ? "Deleting…" : "Confirm delete" }}
           </AppButton>
+
           <AppButton
             variant="secondary"
+            type="button"
             :disabled="deletingId === project.id"
             @click="cancelDelete"
           >
@@ -255,8 +313,6 @@ onMounted(() => {
 .create-form {
   display: flex;
   gap: var(--space-3);
-  /* AppInput is the field's last child, so bottom-alignment puts the
-     button beside the input rather than beside the label above it. */
   align-items: flex-end;
   flex-wrap: wrap;
 }
@@ -363,6 +419,7 @@ onMounted(() => {
   100% {
     opacity: 0.55;
   }
+
   50% {
     opacity: 1;
   }
@@ -383,8 +440,6 @@ onMounted(() => {
     flex-basis: 100%;
   }
 
-  /* AppButton renders the button element, so reach past the child
-     component's scoped boundary to make its buttons fill the row. */
   .create-form :deep(button) {
     flex: 1;
   }
@@ -394,8 +449,6 @@ onMounted(() => {
     margin-left: 0;
   }
 
-  /* AppButton renders the button element, so reach past the child
-     component's scoped boundary to make its buttons fill the row. */
   .project-actions :deep(button) {
     flex: 1;
   }

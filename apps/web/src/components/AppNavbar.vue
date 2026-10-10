@@ -22,9 +22,9 @@ function onThemeChange(value: string) {
     <div class="container">
       <div class="app-heading">
         <h1 class="app-title">
-          <RouterLink to="/projects" class="brand-link"
-            >Business Cards</RouterLink
-          >
+          <RouterLink to="/projects" class="brand-link">
+            Business Cards
+          </RouterLink>
         </h1>
         <p class="app-subtitle">Create and manage your card projects</p>
       </div>

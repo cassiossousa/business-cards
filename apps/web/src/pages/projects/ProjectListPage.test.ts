@@ -1,4 +1,5 @@
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
+import { nextTick } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CardProject } from "../../api/types";
@@ -12,6 +13,7 @@ import ProjectListPage from "./ProjectListPage.vue";
 
 vi.mock("../../api/projectsApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../api/projectsApi")>();
+
   return {
     ...actual,
     listProjects: vi.fn(),
@@ -37,43 +39,83 @@ function buttonByText(wrapper: VueWrapper, label: string) {
   const match = wrapper
     .findAll("button")
     .find((button) => button.text() === label);
+
   if (!match) {
     throw new Error(`Expected to find a button labeled "${label}".`);
   }
+
   return match;
 }
 
 async function mountPage() {
   const wrapper = mount(ProjectListPage);
+
   await flushPromises();
+
   return wrapper;
 }
 
 beforeEach(() => {
-  listProjectsMock.mockResolvedValue({ projects: [] });
+  listProjectsMock.mockReset();
+  createProjectMock.mockReset();
+  deleteProjectMock.mockReset();
+
+  listProjectsMock.mockResolvedValue({
+    projects: [],
+  });
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
+  vi.useRealTimers();
 });
 
 describe("ProjectListPage", () => {
-  it("shows the loading state before projects arrive", async () => {
-    let resolveList: (value: { projects: CardProject[] }) => void = () => {};
-    listProjectsMock.mockReturnValue(
-      new Promise((resolve) => {
-        resolveList = resolve;
-      }),
-    );
+  it("shows the loading state only after a short delay", async () => {
+    vi.useFakeTimers();
 
-    const wrapper = mount(ProjectListPage);
+    let wrapper: VueWrapper | undefined;
 
-    expect(wrapper.text()).toContain("Loading projects…");
+    try {
+      let resolveList: (value: { projects: CardProject[] }) => void = () => {};
 
-    resolveList({ projects: [project()] });
-    await flushPromises();
+      listProjectsMock.mockReturnValue(
+        new Promise<{ projects: CardProject[] }>((resolve) => {
+          resolveList = resolve;
+        }),
+      );
 
-    expect(wrapper.text()).toContain("Studio cards");
+      wrapper = mount(ProjectListPage);
+
+      await vi.advanceTimersByTimeAsync(0);
+      await nextTick();
+
+      expect(wrapper.text()).not.toContain("Loading projects…");
+
+      await vi.advanceTimersByTimeAsync(150);
+      await nextTick();
+
+      expect(wrapper.text()).toContain("Loading projects…");
+
+      resolveList({
+        projects: [project()],
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+      await nextTick();
+
+      expect(wrapper.text()).toContain("Studio cards");
+      expect(wrapper.text()).not.toContain("Loading projects…");
+    } finally {
+      wrapper?.unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it("never shows the loading skeleton when projects arrive quickly", async () => {
+    const wrapper = await mountPage();
+
+    expect(wrapper.find(".skeleton-list").exists()).toBe(false);
+    expect(wrapper.text()).toContain("No projects yet.");
   });
 
   it("shows the empty state when there are no projects", async () => {
@@ -86,7 +128,10 @@ describe("ProjectListPage", () => {
     listProjectsMock.mockResolvedValue({
       projects: [
         project({ name: "Café cards" }),
-        project({ id: "p2", name: "Photo studio" }),
+        project({
+          id: "p2",
+          name: "Photo studio",
+        }),
       ],
     });
 
@@ -109,7 +154,10 @@ describe("ProjectListPage", () => {
 
     expect(wrapper.text()).toContain("Could not load your projects.");
 
-    listProjectsMock.mockResolvedValueOnce({ projects: [project()] });
+    listProjectsMock.mockResolvedValueOnce({
+      projects: [project()],
+    });
+
     await buttonByText(wrapper, "Try again").trigger("click");
     await flushPromises();
 
@@ -121,22 +169,31 @@ describe("ProjectListPage", () => {
     const wrapper = await mountPage();
 
     createProjectMock.mockResolvedValueOnce(
-      project({ id: "new-1", name: "Rounded corners" }),
+      project({
+        id: "new-1",
+        name: "Rounded corners",
+      }),
     );
+
     await wrapper.find("#project-name").setValue("  Rounded corners  ");
+
     await wrapper.find("form").trigger("submit");
     await flushPromises();
 
     expect(createProjectMock).toHaveBeenCalledExactlyOnceWith(
       "Rounded corners",
     );
+
     expect(wrapper.text()).toContain("Rounded corners");
+
     expect(
       wrapper.findAll(".project-list li").map((item) => item.text()),
     ).toHaveLength(1);
+
     expect(
       (wrapper.find("#project-name").element as HTMLInputElement).value,
     ).toBe("");
+
     expect(wrapper.text()).toContain("Created “Rounded corners”.");
   });
 
@@ -144,19 +201,28 @@ describe("ProjectListPage", () => {
     const wrapper = await mountPage();
 
     let resolveCreate: (value: CardProject) => void = () => {};
+
     createProjectMock.mockReturnValue(
-      new Promise((resolve) => {
+      new Promise<CardProject>((resolve) => {
         resolveCreate = resolve;
       }),
     );
 
     await wrapper.find("#project-name").setValue("Slow project");
+
     await wrapper.find("form").trigger("submit");
 
     const submittingButton = buttonByText(wrapper, "Creating…");
+
     expect(submittingButton.attributes("disabled")).toBeDefined();
 
-    resolveCreate(project({ id: "slow", name: "Slow project" }));
+    resolveCreate(
+      project({
+        id: "slow",
+        name: "Slow project",
+      }),
+    );
+
     await flushPromises();
 
     expect(
@@ -168,10 +234,12 @@ describe("ProjectListPage", () => {
     const wrapper = await mountPage();
 
     await wrapper.find("#project-name").setValue("   ");
+
     await wrapper.find("form").trigger("submit");
     await flushPromises();
 
     expect(createProjectMock).not.toHaveBeenCalled();
+
     expect(wrapper.find('[role="status"]').text()).toContain(
       "Enter a project name.",
     );
@@ -187,7 +255,9 @@ describe("ProjectListPage", () => {
         400,
       ),
     );
+
     await wrapper.find("#project-name").setValue("x".repeat(81));
+
     await wrapper.find("form").trigger("submit");
     await flushPromises();
 
@@ -197,22 +267,32 @@ describe("ProjectListPage", () => {
   });
 
   it("deletes a project after a confirmation step", async () => {
-    listProjectsMock.mockResolvedValue({ projects: [project()] });
+    listProjectsMock.mockResolvedValue({
+      projects: [project()],
+    });
+
     const wrapper = await mountPage();
 
     await buttonByText(wrapper, "Delete").trigger("click");
+
     expect(wrapper.text()).toContain("Confirm delete");
 
     deleteProjectMock.mockResolvedValueOnce(undefined);
+
     await buttonByText(wrapper, "Confirm delete").trigger("click");
+
     await flushPromises();
 
     expect(deleteProjectMock).toHaveBeenCalledExactlyOnceWith("p1");
+
     expect(wrapper.text()).toContain("No projects yet.");
   });
 
   it("keeps the project when the delete confirmation is cancelled", async () => {
-    listProjectsMock.mockResolvedValue({ projects: [project()] });
+    listProjectsMock.mockResolvedValue({
+      projects: [project()],
+    });
+
     const wrapper = await mountPage();
 
     await buttonByText(wrapper, "Delete").trigger("click");
@@ -224,19 +304,26 @@ describe("ProjectListPage", () => {
   });
 
   it("shows an alert when deletion fails", async () => {
-    listProjectsMock.mockResolvedValue({ projects: [project()] });
+    listProjectsMock.mockResolvedValue({
+      projects: [project()],
+    });
+
     const wrapper = await mountPage();
 
     deleteProjectMock.mockRejectedValueOnce(
       new ApiError("NOT_FOUND", "Project not found.", 404),
     );
+
     await buttonByText(wrapper, "Delete").trigger("click");
+
     await buttonByText(wrapper, "Confirm delete").trigger("click");
+
     await flushPromises();
 
     expect(wrapper.find('[role="alert"]').text()).toContain(
       "Project not found.",
     );
+
     expect(wrapper.text()).toContain("Studio cards");
   });
 });
